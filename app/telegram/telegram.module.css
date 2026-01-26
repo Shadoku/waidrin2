@@ -1,0 +1,322 @@
+.page {
+  background: radial-gradient(circle at top, rgba(196, 118, 255, 0.15), transparent 55%),
+    #0c0716;
+  color: #f4f0ff;
+  display: flex;
+  flex-direction: column;
+  gap: 96px;
+  min-height: 100vh;
+  padding: 72px clamp(20px, 5vw, 96px) 96px;
+}
+
+.hero {
+  display: grid;
+  gap: 48px;
+  grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+  align-items: center;
+}
+
+.heroContent {
+  display: flex;
+  flex-direction: column;
+  gap: 24px;
+}
+
+.badge {
+  align-self: flex-start;
+  background: rgba(173, 101, 255, 0.2);
+  border: 1px solid rgba(173, 101, 255, 0.5);
+  border-radius: 999px;
+  color: #e9d7ff;
+  font-size: 0.85rem;
+  font-weight: 600;
+  letter-spacing: 0.08em;
+  padding: 6px 16px;
+  text-transform: uppercase;
+}
+
+.title {
+  font-family: var(--font-cinzel-decorative), "Cinzel Decorative", serif;
+  font-size: clamp(2.8rem, 4vw, 4.2rem);
+  line-height: 1.05;
+  margin: 0;
+}
+
+.subtitle {
+  color: rgba(244, 240, 255, 0.8);
+  font-size: 1.1rem;
+  line-height: 1.6;
+  margin: 0;
+}
+
+.heroActions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 16px;
+  align-items: center;
+}
+
+.primaryAction {
+  align-items: center;
+  background: linear-gradient(135deg, #9c62ff, #d26bff);
+  border-radius: 999px;
+  color: #0b0616;
+  display: inline-flex;
+  gap: 10px;
+  font-weight: 700;
+  padding: 12px 22px;
+  text-decoration: none;
+  transition: transform 0.2s ease, box-shadow 0.2s ease;
+}
+
+.primaryAction svg {
+  height: 18px;
+  width: 18px;
+}
+
+.primaryAction:hover {
+  box-shadow: 0 12px 24px rgba(156, 98, 255, 0.4);
+  transform: translateY(-2px);
+}
+
+.secondaryAction {
+  background: rgba(255, 255, 255, 0.05);
+  border-radius: 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  padding: 10px 14px;
+  font-size: 0.9rem;
+}
+
+.secondaryAction code {
+  color: #e4d4ff;
+  font-family: "JetBrains Mono", "Fira Code", monospace;
+  font-size: 0.85rem;
+}
+
+.heroDetails {
+  display: grid;
+  gap: 18px;
+}
+
+.heroDetails div {
+  background: rgba(255, 255, 255, 0.04);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 16px;
+  padding: 16px 18px;
+  display: grid;
+  gap: 6px;
+}
+
+.heroDetails strong {
+  font-size: 1rem;
+}
+
+.heroDetails span {
+  color: rgba(244, 240, 255, 0.72);
+  font-size: 0.95rem;
+}
+
+.heroPreview {
+  display: flex;
+  justify-content: center;
+}
+
+.chatCard {
+  background: rgba(17, 10, 33, 0.95);
+  border: 1px solid rgba(169, 110, 255, 0.4);
+  border-radius: 24px;
+  box-shadow: 0 24px 60px rgba(0, 0, 0, 0.35);
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  max-width: 420px;
+  padding: 24px;
+}
+
+.chatCard header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.chatTitle {
+  font-weight: 700;
+  margin: 0;
+}
+
+.chatStatus {
+  color: rgba(244, 240, 255, 0.65);
+  font-size: 0.85rem;
+  margin: 4px 0 0;
+}
+
+.chatBadge {
+  background: rgba(47, 156, 252, 0.2);
+  border-radius: 999px;
+  color: #bfe3ff;
+  font-size: 0.75rem;
+  padding: 4px 10px;
+}
+
+.chatBody {
+  display: grid;
+  gap: 12px;
+}
+
+.messageIncoming,
+.messageOutgoing {
+  border-radius: 16px;
+  padding: 12px 14px;
+  display: grid;
+  gap: 6px;
+  line-height: 1.5;
+}
+
+.messageIncoming {
+  background: rgba(255, 255, 255, 0.06);
+}
+
+.messageOutgoing {
+  background: rgba(156, 98, 255, 0.25);
+  margin-left: 32px;
+}
+
+.messageLabel {
+  font-size: 0.75rem;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: rgba(244, 240, 255, 0.7);
+}
+
+.chatFooter {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.chatFooter button {
+  background: rgba(255, 255, 255, 0.08);
+  border: 1px solid rgba(255, 255, 255, 0.14);
+  border-radius: 999px;
+  color: #f4f0ff;
+  font-size: 0.85rem;
+  padding: 6px 12px;
+}
+
+.gridSection,
+.stepsSection,
+.ctaSection {
+  display: grid;
+  gap: 32px;
+}
+
+.sectionHeading h2 {
+  font-family: var(--font-cinzel-decorative), "Cinzel Decorative", serif;
+  font-size: clamp(2rem, 3vw, 2.8rem);
+  margin: 0 0 12px;
+}
+
+.sectionHeading p {
+  color: rgba(244, 240, 255, 0.75);
+  margin: 0;
+  max-width: 720px;
+}
+
+.grid {
+  display: grid;
+  gap: 20px;
+  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+}
+
+.grid article {
+  background: rgba(255, 255, 255, 0.05);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 20px;
+  display: grid;
+  gap: 12px;
+  padding: 20px;
+}
+
+.grid svg {
+  height: 24px;
+  width: 24px;
+  color: #e2cbff;
+}
+
+.steps {
+  display: grid;
+  gap: 18px;
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+
+.steps li {
+  display: grid;
+  gap: 16px;
+  grid-template-columns: auto 1fr;
+  align-items: center;
+  background: rgba(255, 255, 255, 0.04);
+  border-radius: 20px;
+  padding: 18px 20px;
+}
+
+.steps span {
+  background: rgba(156, 98, 255, 0.3);
+  border-radius: 999px;
+  font-weight: 700;
+  padding: 8px 14px;
+}
+
+.steps h3 {
+  margin: 0 0 6px;
+}
+
+.steps p {
+  margin: 0;
+  color: rgba(244, 240, 255, 0.72);
+}
+
+.ctaSection {
+  align-items: center;
+  background: linear-gradient(135deg, rgba(156, 98, 255, 0.2), rgba(210, 107, 255, 0.3));
+  border-radius: 24px;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 24px;
+  justify-content: space-between;
+  padding: 32px;
+}
+
+.ctaSection h2 {
+  font-family: var(--font-cinzel-decorative), "Cinzel Decorative", serif;
+  margin: 0 0 8px;
+}
+
+.ctaSection p {
+  margin: 0;
+  color: rgba(244, 240, 255, 0.75);
+}
+
+@media (max-width: 720px) {
+  .page {
+    padding: 48px 20px 72px;
+    gap: 72px;
+  }
+
+  .heroActions {
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .primaryAction {
+    justify-content: center;
+  }
+
+  .ctaSection {
+    flex-direction: column;
+    align-items: flex-start;
+  }
+}
