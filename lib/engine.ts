@@ -36,8 +36,7 @@ export async function next(
 
   await getState().setAsync(async (state) => {
     const snapshotState = () => {
-      const snapshot = schemas.State.parse(current(state));
-      snapshot.history = [...state.history];
+      const snapshot = schemas.StateBase.parse(current(state));
       state.history.push(snapshot);
     };
     let step: [string, string];
@@ -293,7 +292,6 @@ export function undo(): void {
     const previous = state.history.pop();
     if (previous) {
       Object.assign(state, previous);
-      state.history = previous.history;
     }
   });
 }
