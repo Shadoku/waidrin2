@@ -2,6 +2,7 @@
 // Copyright (C) 2025  Philipp Emanuel Weidmann <pew@worldwidemann.com>
 
 import { convertLocationChangeEventToText, getApproximateTokenCount, getContext } from "./context";
+import { genrePromptConfigs, type GenrePromptConfig } from "./genres";
 import * as schemas from "./schemas";
 import type { LocationChangeEvent, State } from "./state";
 
@@ -18,67 +19,79 @@ function normalize(text: string): string {
   return text.replaceAll(singleNewline, " ").trim();
 }
 
-function makePrompt(userPrompt: string): Prompt {
+function makePrompt(userPrompt: string, systemPrompt: string): Prompt {
   return {
-    system: "You are the game master of a text-based fantasy role-playing game.",
+    system: systemPrompt,
     user: normalize(userPrompt),
   };
 }
 
-export const generateWorldPrompt = makePrompt(`
-Create a fictional world for a fantasy adventure RPG and return its name
-and a short description (100 words maximum) as a JSON object.
-Do not use a cliched name like 'Eldoria'.
-The world is populated by humans, elves, and dwarves.
-`);
+function getPromptConfig(state: State): GenrePromptConfig {
+  if (state.genre === "custom") {
+    return state.customPrompts;
+  }
+
+  return genrePromptConfigs[state.genre];
+}
+
+function formatTemplate(template: string, variables: Record<string, string>): string {
+  return template.replaceAll(/\{\{(\w+)\}\}/g, (_match, key) => variables[key] ?? "");
+}
+
+function getTemplateVariables(state: State, extra: Record<string, string> = {}): Record<string, string> {
+  const location = state.locations[state.protagonist.locationIndex];
+
+  return {
+    worldName: state.world.name,
+    worldDescription: state.world.description,
+    protagonistName: state.protagonist.name,
+    protagonistGender: state.protagonist.gender,
+    protagonistRace: state.protagonist.race,
+    protagonistBiography: state.protagonist.biography,
+    locationName: location?.name ?? "",
+    locationDescription: location?.description ?? "",
+    locationTypes: Object.values(schemas.LocationType.enum).join(", "),
+    ...extra,
+  };
+}
+
+export function generateWorldPrompt(state: State): Prompt {
+  const config = getPromptConfig(state);
+  return makePrompt(formatTemplate(config.worldPrompt, getTemplateVariables(state)), config.systemPrompt);
+}
 
 export function generateProtagonistPrompt(state: State): Prompt {
-  return makePrompt(`
-Create a ${state.protagonist.gender} ${state.protagonist.race} protagonist
-for a fantasy adventure set in the world of ${state.world.name}.
-
-${state.world.description}
-
-Return the character description as a JSON object. Include a short biography (100 words maximum).
-`);
+  const config = getPromptConfig(state);
+  return makePrompt(formatTemplate(config.protagonistPrompt, getTemplateVariables(state)), config.systemPrompt);
 }
 
 export function generateStartingLocationPrompt(state: State): Prompt {
-  return makePrompt(`
-Create a starting location for a fantasy adventure set in the world of ${state.world.name}.
-
-${state.world.description}
-
-Return the name and type of the location, and a short description (100 words maximum), as a JSON object.
-Choose from the following location types: ${Object.values(schemas.LocationType.enum).join(", ")}
-`);
+  const config = getPromptConfig(state);
+  return makePrompt(formatTemplate(config.startingLocationPrompt, getTemplateVariables(state)), config.systemPrompt);
 }
 
 export function generateStartingCharactersPrompt(state: State): Prompt {
+  const config = getPromptConfig(state);
   const location = state.locations[state.protagonist.locationIndex];
 
-  return makePrompt(`
-This is the start of a fantasy adventure set in the world of ${state.world.name}. ${state.world.description}
-
-The protagonist is ${state.protagonist.name}. ${state.protagonist.biography}
-
-${state.protagonist.name} is about to enter ${location.name}. ${location.description}
-
-Create 5 characters that ${state.protagonist.name} might encounter at ${location.name}.
-Return the character descriptions as an array of JSON objects.
-Include a short biography (100 words maximum) for each character.
-`);
+  return makePrompt(
+    formatTemplate(
+      config.startingCharactersPrompt,
+      getTemplateVariables(state, {
+        locationName: location.name,
+        locationDescription: location.description,
+      }),
+    ),
+    config.systemPrompt,
+  );
 }
 
-const makeMainPromptPreamble = (
-  state: State,
-): string => `This is a fantasy adventure RPG set in the world of ${state.world.name}. ${state.world.description}
+function makeMainPromptPreamble(state: State, config: GenrePromptConfig): string {
+  return formatTemplate(config.mainPromptPreamble, getTemplateVariables(state));
+}
 
-The protagonist (who you should refer to as "you" in your narration, as the adventure happens from their perspective)
-is ${state.protagonist.name}. ${state.protagonist.biography}`;
-
-function makeMainPrompt(prompt: string, state: State): Prompt {
-  const promptPreamble = makeMainPromptPreamble(state);
+function makeMainPrompt(prompt: string, state: State, config: GenrePromptConfig): Prompt {
+  const promptPreamble = makeMainPromptPreamble(state, config);
 
   // get the tokens used by the prompt and the preamble
   const normalizedPrompt = normalize(prompt);
@@ -98,79 +111,71 @@ ${context}
 
 
 ${normalizedPrompt}
-`);
+`,
+    config.systemPrompt,
+  );
 }
 
 export function narratePrompt(state: State, action?: string): Prompt {
-  return makeMainPrompt(
-    `
-${action ? `The protagonist (${state.protagonist.name}) has chosen to do the following: ${action}.` : ""}
-Narrate what happens next, using novel-style prose, in the present tense.
-Prioritize dialogue over descriptions.
-Do not mention more than 2 different characters in your narration.
-Refer to characters using their first names.
-Make all character names bold by surrounding them with double asterisks (**Name**).
-Write 2-3 paragraphs (no more than 200 words in total).
-Stop when it is the protagonist's turn to speak or act.
-Remember to refer to the protagonist (${state.protagonist.name}) as "you" in your narration.
-Do not explicitly ask the protagonist for a response at the end; they already know what is expected of them.
-`,
-    state,
+  const config = getPromptConfig(state);
+  const actionLine = action ? `The protagonist (${state.protagonist.name}) has chosen to do the following: ${action}.` : "";
+  const promptText = formatTemplate(
+    config.narrationPrompt,
+    getTemplateVariables(state, {
+      actionLine,
+    }),
   );
+  return makeMainPrompt(promptText, state, config);
 }
 
 export function generateActionsPrompt(state: State): Prompt {
-  return makeMainPrompt(
-    `
-Suggest 3 options for what the protagonist (${state.protagonist.name}) could do or say next.
-Each option should be a single, short sentence that starts with a verb.
-Return the options as a JSON array of strings.
-`,
-    state,
-  );
+  const config = getPromptConfig(state);
+  const promptText = formatTemplate(config.actionsPrompt, getTemplateVariables(state));
+  return makeMainPrompt(promptText, state, config);
 }
 
 export function checkIfSameLocationPrompt(state: State): Prompt {
-  return makeMainPrompt(
-    `
-Is the protagonist (${state.protagonist.name}) still at ${state.locations[state.protagonist.locationIndex].name}?
-Answer with "yes" or "no".
-`,
-    state,
+  const config = getPromptConfig(state);
+  const location = state.locations[state.protagonist.locationIndex];
+  const promptText = formatTemplate(
+    config.checkLocationPrompt,
+    getTemplateVariables(state, { locationName: location.name }),
   );
+  return makeMainPrompt(promptText, state, config);
 }
 
 export function generateNewLocationPrompt(state: State): Prompt {
-  return makeMainPrompt(
-    `
-The protagonist (${state.protagonist.name}) has left ${state.locations[state.protagonist.locationIndex].name}.
-Return the name and type of their new location, and a short description (100 words maximum), as a JSON object.
-Also include the names of the characters that are going to accompany ${state.protagonist.name} there, if any.
-`,
-    state,
+  const config = getPromptConfig(state);
+  const location = state.locations[state.protagonist.locationIndex];
+  const promptText = formatTemplate(
+    config.newLocationPrompt,
+    getTemplateVariables(state, { locationName: location.name }),
   );
+  return makeMainPrompt(promptText, state, config);
 }
 
 // Must be called *before* adding the location change event to the state!
 export function generateNewCharactersPrompt(state: State, accompanyingCharacters: string[]): Prompt {
+  const config = getPromptConfig(state);
   const location = state.locations[state.protagonist.locationIndex];
+  const accompanyingCharactersLine =
+    accompanyingCharacters.length > 0
+      ? `${state.protagonist.name} is accompanied by the following characters: ${accompanyingCharacters.join(", ")}.`
+      : "";
 
-  return makeMainPrompt(
-    `
-The protagonist (${state.protagonist.name}) is about to enter ${location.name}. ${location.description}
-
-${accompanyingCharacters.length > 0 ? `${state.protagonist.name} is accompanied by the following characters: ${accompanyingCharacters.join(", ")}.` : ""}
-
-Create 5 additional, new characters that ${state.protagonist.name} might encounter at ${location.name}.
-Do not reuse characters that have already appeared in the story.
-Return the character descriptions as an array of JSON objects.
-Include a short biography (100 words maximum) for each character.
-`,
-    state,
+  const promptText = formatTemplate(
+    config.newCharactersPrompt,
+    getTemplateVariables(state, {
+      locationName: location.name,
+      locationDescription: location.description,
+      accompanyingCharactersLine,
+    }),
   );
+  return makeMainPrompt(promptText, state, config);
 }
 
 export function summarizeScenePrompt(state: State): Prompt {
+  const config = getPromptConfig(state);
   const protagonistName = state.protagonist.name;
 
   // Find the start of the current scene (most recent location change in state).
@@ -193,28 +198,16 @@ export function summarizeScenePrompt(state: State): Prompt {
     .filter((t): t is string => !!t)
     .join("\n\n");
 
-  const userPrompt = `
-${makeMainPromptPreamble(state)}
+  const mainPromptPreamble = makeMainPromptPreamble(state, config);
+  const userPrompt = formatTemplate(
+    config.summarizePrompt,
+    getTemplateVariables(state, {
+      protagonistName,
+      sceneContext,
+      sceneText: narrationTexts,
+      mainPromptPreamble,
+    }),
+  );
 
-You will create a compact memory of the just-completed scene. This memory is used as long-term context for future generations.
-Write a 1-2 paragraph scene summary (no more than 300 words in total).
-Use proper names and refer to the protagonist as "you".
-Capture only plot-relevant facts that will matter later such as:
-what ${protagonistName} does/learns/decides,
-changes to location, inventory, injuries, or relationships,
-discoveries/clues,
-unresolved goals, promises, threats, or deadlines.
-Do not quote dialogue, add new facts, or include stylistic prose.
-Return only the summary with no preamble, labels, markdown or quotes.
-
-Here's the context for the scene to summarize:
-
-${sceneContext}
-
-Here's the scene to summarize:
-
-${narrationTexts}
-`;
-
-  return makePrompt(userPrompt);
+  return makePrompt(userPrompt, config.systemPrompt);
 }

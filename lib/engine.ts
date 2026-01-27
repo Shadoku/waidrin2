@@ -140,7 +140,7 @@ export async function next(
       } else if (state.view === "character") {
         snapshotState();
         step = ["Generating world", "This typically takes between 10 and 30 seconds"];
-        state.world = await backend.getObject(generateWorldPrompt, schemas.World, onToken);
+        state.world = await backend.getObject(generateWorldPrompt(state), schemas.World, onToken);
 
         step = ["Generating protagonist", "This typically takes between 10 and 30 seconds"];
         state.protagonist = await backend.getObject(generateProtagonistPrompt(state), RawCharacter, onToken);
