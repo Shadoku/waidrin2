@@ -8,7 +8,15 @@ import { useShallow } from "zustand/shallow";
 import { useStateStore } from "@/lib/state";
 import CharacterView from "./CharacterView";
 
-export default function ActionChoice({ onAction }: { onAction: (action: string) => void }) {
+type ActionChoiceProps = {
+  onAction: (action: string) => void;
+  onUndo: () => void;
+  onRegenerate: () => void;
+  canUndo: boolean;
+  canRegenerate: boolean;
+};
+
+export default function ActionChoice({ onAction, onUndo, onRegenerate, canUndo, canRegenerate }: ActionChoiceProps) {
   const [customAction, setCustomAction] = useState("");
 
   const { protagonist, actions } = useStateStore(
@@ -87,6 +95,15 @@ export default function ActionChoice({ onAction }: { onAction: (action: string) 
           </IconButton>
         </TextField.Slot>
       </TextField.Root>
+
+      <Flex justify="end" gap="3">
+        <Button variant="soft" color="gray" disabled={!canUndo} onClick={onUndo}>
+          Undo
+        </Button>
+        <Button variant="soft" color="gray" disabled={!canRegenerate} onClick={onRegenerate}>
+          Regenerate
+        </Button>
+      </Flex>
     </Flex>
   );
 }

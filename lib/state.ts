@@ -66,6 +66,7 @@ export const initialState: State = schemas.State.parse({
   violentContentLevel: "regular",
   events: [],
   actions: [],
+  history: [],
 });
 
 export type Plugin = Partial<{

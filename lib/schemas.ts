@@ -77,7 +77,7 @@ export const Event = z.discriminatedUnion("type", [
   LocationChangeEvent,
 ]);
 
-export const State = z.object({
+export const StateBase = z.object({
   apiUrl: z.url(),
   apiKey: z.string().trim(),
   model: z.string().trim(),
@@ -102,4 +102,8 @@ export const State = z.object({
   violentContentLevel: ViolentContentLevel,
   events: Event.array(),
   actions: Action.array(),
+});
+
+export const State = StateBase.extend({
+  history: StateBase.array(),
 });
