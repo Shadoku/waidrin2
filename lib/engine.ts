@@ -36,7 +36,7 @@ export async function next(
 
   await getState().setAsync(async (state) => {
     const snapshotState = () => {
-      const snapshot = schemas.StateBase.parse(current(state));
+      const snapshot = schemas.State.parse(current(state));
       snapshot.history = [...state.history];
       state.history.push(snapshot);
     };
