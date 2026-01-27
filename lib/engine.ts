@@ -317,6 +317,33 @@ export function reset(): void {
   getState().set(initialState);
 }
 
+function resetScenarioState(view: "character" | "scenario"): void {
+  getState().set((state) => {
+    state.view = view;
+    state.world = initialState.world;
+    state.locations = [];
+    state.characters = [];
+    state.protagonist = initialState.protagonist;
+    state.hiddenDestiny = initialState.hiddenDestiny;
+    state.betrayal = initialState.betrayal;
+    state.oppositeSexMagnet = initialState.oppositeSexMagnet;
+    state.sameSexMagnet = initialState.sameSexMagnet;
+    state.sexualContentLevel = initialState.sexualContentLevel;
+    state.violentContentLevel = initialState.violentContentLevel;
+    state.events = [];
+    state.actions = [];
+    state.history = [];
+  });
+}
+
+export function newCharacter(): void {
+  resetScenarioState("character");
+}
+
+export function newScenario(): void {
+  resetScenarioState("scenario");
+}
+
 export function abort(): void {
   getBackend().abort();
 }

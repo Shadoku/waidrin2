@@ -3,7 +3,7 @@
 
 import { DropdownMenu, IconButton, Text } from "@radix-ui/themes";
 import { GiElfHelmet } from "react-icons/gi";
-import { reset } from "@/lib/engine";
+import { newCharacter, newScenario, reset } from "@/lib/engine";
 
 export default function MainMenu() {
   return (
@@ -19,6 +19,13 @@ export default function MainMenu() {
           onClick={() => window.open("https://github.com/p-e-w/waidrin/issues", "_blank", "noopener,noreferrer")}
         >
           <Text size="5">Report an issue...</Text>
+        </DropdownMenu.Item>
+        <DropdownMenu.Separator />
+        <DropdownMenu.Item onClick={newCharacter}>
+          <Text size="5">New character (keeps connection settings)</Text>
+        </DropdownMenu.Item>
+        <DropdownMenu.Item onClick={newScenario}>
+          <Text size="5">New scenario (keeps connection settings)</Text>
         </DropdownMenu.Item>
         <DropdownMenu.Separator />
         <DropdownMenu.Item color="red" onClick={reset}>
