@@ -79,6 +79,22 @@ React Strict Mode, and is probably what you want if you plan to work on
 Waidrin's code (which you are very welcome to do!).
 
 
+## Telegram bot
+
+Waidrin also ships with a Telegram bot runtime. To run it locally, set the
+environment variables below and start the bot script:
+
+```
+TELEGRAM_BOT_TOKEN=YOUR_TOKEN_HERE
+WAIDRIN_WEB_URL=http://localhost:3000/telegram
+npm run telegram:bot
+```
+
+The bot provides a menu-driven experience with inline buttons and accepts
+free-form prompts to kick off a scenario. See `telegram-bot/README.md` for
+details.
+
+
 ## License
 
 Copyright &copy; 2025  Philipp Emanuel Weidmann (<pew@worldwidemann.com>)
