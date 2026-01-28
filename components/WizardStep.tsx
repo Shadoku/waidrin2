@@ -23,10 +23,22 @@ export default function WizardStep({
           {title}
         </Heading>
 
-        <Button className="absolute top-1.5 left-0" variant="classic" size="3" onClick={onBack} disabled={!onBack}>
+        <Button
+          className="fixed bottom-6 left-6 z-20"
+          variant="classic"
+          size="3"
+          onClick={onBack}
+          disabled={!onBack}
+        >
           <GiBroadheadArrow className="rotate-135" size="25" /> <Text size="6">Back</Text>
         </Button>
-        <Button className="absolute top-1.5 right-0" variant="classic" size="3" onClick={onNext} disabled={!onNext}>
+        <Button
+          className="fixed bottom-6 right-6 z-20"
+          variant="classic"
+          size="3"
+          onClick={onNext}
+          disabled={!onNext}
+        >
           <Text size="6">Next</Text> <GiBroadheadArrow className="-rotate-45" size="25" />
         </Button>
 
