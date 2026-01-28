@@ -34,6 +34,8 @@ export const PromptConfig = z.object({
   summarizePrompt: PromptText,
 });
 
+export const PromptOverrideText = z.string().trim().max(10000);
+
 export const World = z.object({
   name: Name,
   description: Description,
@@ -112,6 +114,10 @@ export const StateBase = z.object({
   protagonistGuidance: z.string().trim().max(500),
   startingLocationGuidance: z.string().trim().max(500),
   startingCharactersGuidance: z.string().trim().max(500),
+  systemPromptOverride: PromptOverrideText,
+  protagonistPromptOverride: PromptOverrideText,
+  startingLocationPromptOverride: PromptOverrideText,
+  startingCharactersPromptOverride: PromptOverrideText,
   world: World,
   locations: Location.array(),
   characters: Character.array(),

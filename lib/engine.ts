@@ -327,6 +327,10 @@ function resetScenarioState(view: "character" | "scenario"): void {
     state.protagonistGuidance = initialState.protagonistGuidance;
     state.startingLocationGuidance = initialState.startingLocationGuidance;
     state.startingCharactersGuidance = initialState.startingCharactersGuidance;
+    state.systemPromptOverride = initialState.systemPromptOverride;
+    state.protagonistPromptOverride = initialState.protagonistPromptOverride;
+    state.startingLocationPromptOverride = initialState.startingLocationPromptOverride;
+    state.startingCharactersPromptOverride = initialState.startingCharactersPromptOverride;
     state.hiddenDestiny = initialState.hiddenDestiny;
     state.betrayal = initialState.betrayal;
     state.oppositeSexMagnet = initialState.oppositeSexMagnet;

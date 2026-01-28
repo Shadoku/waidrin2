@@ -1,23 +1,55 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 // Copyright (C) 2025  Philipp Emanuel Weidmann <pew@worldwidemann.com>
 
-import { Box, Heading, RadioCards, Text, TextArea } from "@radix-ui/themes";
+import { Box, Button, Dialog, Flex, Heading, RadioCards, Text, TextArea } from "@radix-ui/themes";
 import { Label } from "radix-ui";
+import { useMemo, useState } from "react";
 import { useShallow } from "zustand/shallow";
 import ImageOption from "@/components/ImageOption";
 import WizardStep from "@/components/WizardStep";
+import { getStartingCharactersPromptText, getStartingLocationPromptText, getSystemPrompt } from "@/lib/prompts";
 import { useStateStore } from "@/lib/state";
 
 export default function GenreSelect({ onNext, onBack }: { onNext?: () => void; onBack?: () => void }) {
-  const { genre, customPrompts, startingLocationGuidance, startingCharactersGuidance, setState } = useStateStore(
+  const {
+    genre,
+    customPrompts,
+    startingLocationGuidance,
+    startingCharactersGuidance,
+    systemPromptOverride,
+    startingLocationPromptOverride,
+    startingCharactersPromptOverride,
+    setState,
+    fullState,
+  } = useStateStore(
     useShallow((state) => ({
       genre: state.genre,
       customPrompts: state.customPrompts,
       startingLocationGuidance: state.startingLocationGuidance,
       startingCharactersGuidance: state.startingCharactersGuidance,
+      systemPromptOverride: state.systemPromptOverride,
+      startingLocationPromptOverride: state.startingLocationPromptOverride,
+      startingCharactersPromptOverride: state.startingCharactersPromptOverride,
       setState: state.set,
+      fullState: state,
     })),
   );
+
+  const [reviewOpen, setReviewOpen] = useState(false);
+  const [systemPromptDraft, setSystemPromptDraft] = useState("");
+  const [startingLocationDraft, setStartingLocationDraft] = useState("");
+  const [startingCharactersDraft, setStartingCharactersDraft] = useState("");
+
+  const effectiveSystemPrompt = useMemo(() => getSystemPrompt(fullState), [fullState]);
+  const effectiveStartingLocation = useMemo(() => getStartingLocationPromptText(fullState), [fullState]);
+  const effectiveStartingCharacters = useMemo(() => getStartingCharactersPromptText(fullState), [fullState]);
+
+  const openReview = () => {
+    setSystemPromptDraft(systemPromptOverride.trim() || effectiveSystemPrompt);
+    setStartingLocationDraft(startingLocationPromptOverride.trim() || effectiveStartingLocation);
+    setStartingCharactersDraft(startingCharactersPromptOverride.trim() || effectiveStartingCharacters);
+    setReviewOpen(true);
+  };
 
   const promptFields: Array<{ key: keyof typeof customPrompts; label: string; description?: string }> = [
     { key: "systemPrompt", label: "System prompt" },
@@ -35,7 +67,7 @@ export default function GenreSelect({ onNext, onBack }: { onNext?: () => void; o
   ];
 
   return (
-    <WizardStep title="Genre" onNext={onNext} onBack={onBack}>
+    <WizardStep title="Genre" onNext={onNext ? openReview : undefined} onBack={onBack}>
       <RadioCards.Root
         value={genre}
         onValueChange={(value) =>
@@ -135,6 +167,77 @@ export default function GenreSelect({ onNext, onBack }: { onNext?: () => void; o
             ))}
           </Box>
         </Box>
+      )}
+
+      {onNext && (
+        <Dialog.Root open={reviewOpen} onOpenChange={setReviewOpen}>
+          <Dialog.Content maxWidth="50rem">
+            <Dialog.Title className="lowercase" size="7">
+              Review genre prompts
+            </Dialog.Title>
+            <Dialog.Description size="4" color="gray" mb="4">
+              Review and edit the final prompts before they are sent to the model.
+            </Dialog.Description>
+
+            <Flex direction="column" gap="4">
+              <Label.Root>
+                <Text size="5" color="cyan">
+                  System prompt
+                </Text>
+                <TextArea
+                  value={systemPromptDraft}
+                  onChange={(event) => setSystemPromptDraft(event.target.value)}
+                  className="mt-2 [&_textarea]:text-(length:--font-size-4)"
+                  size="3"
+                  resize="vertical"
+                />
+              </Label.Root>
+              <Label.Root>
+                <Text size="5" color="cyan">
+                  Starting location prompt
+                </Text>
+                <TextArea
+                  value={startingLocationDraft}
+                  onChange={(event) => setStartingLocationDraft(event.target.value)}
+                  className="mt-2 [&_textarea]:text-(length:--font-size-4)"
+                  size="3"
+                  resize="vertical"
+                />
+              </Label.Root>
+              <Label.Root>
+                <Text size="5" color="cyan">
+                  Starting characters prompt
+                </Text>
+                <TextArea
+                  value={startingCharactersDraft}
+                  onChange={(event) => setStartingCharactersDraft(event.target.value)}
+                  className="mt-2 [&_textarea]:text-(length:--font-size-4)"
+                  size="3"
+                  resize="vertical"
+                />
+              </Label.Root>
+            </Flex>
+
+            <Flex justify="end" gap="3" mt="5">
+              <Button variant="ghost" color="gray" onClick={() => setReviewOpen(false)}>
+                Cancel
+              </Button>
+              <Button
+                onClick={() => {
+                  setState((state) => {
+                    state.systemPromptOverride = systemPromptDraft.trim();
+                    state.startingLocationPromptOverride = startingLocationDraft.trim();
+                    state.startingCharactersPromptOverride = startingCharactersDraft.trim();
+                  });
+                  setReviewOpen(false);
+                  onNext();
+                }}
+              >
+                Continue
+              </Button>
+            </Flex>
+          </Dialog.Content>
+        </Dialog.Root>
       )}
     </WizardStep>
   );

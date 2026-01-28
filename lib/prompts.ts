@@ -38,6 +38,15 @@ function formatTemplate(template: string, variables: Record<string, string>): st
   return template.replaceAll(/\{\{(\w+)\}\}/g, (_match, key) => variables[key] ?? "");
 }
 
+export function getSystemPrompt(state: State): string {
+  const override = state.systemPromptOverride?.trim();
+  if (override) {
+    return override;
+  }
+
+  return getPromptConfig(state).systemPrompt;
+}
+
 function appendGuidance(promptText: string, guidance?: string): string {
   if (!guidance) {
     return promptText;
@@ -70,39 +79,64 @@ function getTemplateVariables(state: State, extra: Record<string, string> = {}):
 
 export function generateWorldPrompt(state: State): Prompt {
   const config = getPromptConfig(state);
-  return makePrompt(formatTemplate(config.worldPrompt, getTemplateVariables(state)), config.systemPrompt);
+  return makePrompt(formatTemplate(config.worldPrompt, getTemplateVariables(state)), getSystemPrompt(state));
 }
 
-export function generateProtagonistPrompt(state: State): Prompt {
+export function getProtagonistPromptText(state: State): string {
+  const override = state.protagonistPromptOverride?.trim();
+  if (override) {
+    return override;
+  }
+
   const config = getPromptConfig(state);
-  const promptText = appendGuidance(
+  return appendGuidance(
     formatTemplate(config.protagonistPrompt, getTemplateVariables(state)),
     state.protagonistGuidance,
   );
-  return makePrompt(promptText, config.systemPrompt);
+}
+
+export function generateProtagonistPrompt(state: State): Prompt {
+  return makePrompt(getProtagonistPromptText(state), getSystemPrompt(state));
+}
+
+export function getStartingLocationPromptText(state: State): string {
+  const override = state.startingLocationPromptOverride?.trim();
+  if (override) {
+    return override;
+  }
+
+  const config = getPromptConfig(state);
+  const promptText = formatTemplate(config.startingLocationPrompt, getTemplateVariables(state));
+  return state.genre === "custom" ? promptText : appendGuidance(promptText, state.startingLocationGuidance);
 }
 
 export function generateStartingLocationPrompt(state: State): Prompt {
-  const config = getPromptConfig(state);
-  const promptText = formatTemplate(config.startingLocationPrompt, getTemplateVariables(state));
-  const finalPrompt = state.genre === "custom" ? promptText : appendGuidance(promptText, state.startingLocationGuidance);
-  return makePrompt(finalPrompt, config.systemPrompt);
+  return makePrompt(getStartingLocationPromptText(state), getSystemPrompt(state));
 }
 
-export function generateStartingCharactersPrompt(state: State): Prompt {
+export function getStartingCharactersPromptText(state: State): string {
+  const override = state.startingCharactersPromptOverride?.trim();
+  if (override) {
+    return override;
+  }
+
   const config = getPromptConfig(state);
   const location = state.locations[state.protagonist.locationIndex];
+  const locationName = location?.name ?? "[location]";
+  const locationDescription = location?.description ?? "";
 
   const promptText = formatTemplate(
     config.startingCharactersPrompt,
     getTemplateVariables(state, {
-      locationName: location.name,
-      locationDescription: location.description,
+      locationName,
+      locationDescription,
     }),
   );
-  const finalPrompt =
-    state.genre === "custom" ? promptText : appendGuidance(promptText, state.startingCharactersGuidance);
-  return makePrompt(finalPrompt, config.systemPrompt);
+  return state.genre === "custom" ? promptText : appendGuidance(promptText, state.startingCharactersGuidance);
+}
+
+export function generateStartingCharactersPrompt(state: State): Prompt {
+  return makePrompt(getStartingCharactersPromptText(state), getSystemPrompt(state));
 }
 
 function makeMainPromptPreamble(state: State, config: GenrePromptConfig): string {
@@ -131,7 +165,7 @@ ${context}
 
 ${normalizedPrompt}
 `,
-    config.systemPrompt,
+    getSystemPrompt(state),
   );
 }
 
@@ -228,5 +262,5 @@ export function summarizeScenePrompt(state: State): Prompt {
     }),
   );
 
-  return makePrompt(userPrompt, config.systemPrompt);
+  return makePrompt(userPrompt, getSystemPrompt(state));
 }

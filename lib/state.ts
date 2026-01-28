@@ -37,6 +37,10 @@ export const initialState: State = schemas.State.parse({
   protagonistGuidance: "",
   startingLocationGuidance: "",
   startingCharactersGuidance: "",
+  systemPromptOverride: "",
+  protagonistPromptOverride: "",
+  startingLocationPromptOverride: "",
+  startingCharactersPromptOverride: "",
   world: {
     name: "[name]",
     description: "[description]",
