@@ -7,10 +7,12 @@ import type * as z from "zod/v4";
 import { create } from "zustand";
 import { persist } from "zustand/middleware";
 import { immer } from "zustand/middleware/immer";
+import { defaultCustomPrompts, defaultLlmConfig } from "./llmConfig";
 import type { Backend } from "./backend";
 import * as schemas from "./schemas";
 
 export type View = z.infer<typeof schemas.View>;
+export type Genre = z.infer<typeof schemas.Genre>;
 export type World = z.infer<typeof schemas.World>;
 export type Gender = z.infer<typeof schemas.Gender>;
 export type Race = z.infer<typeof schemas.Race>;
@@ -24,27 +26,17 @@ export type NarrationEvent = z.infer<typeof schemas.NarrationEvent>;
 export type CharacterIntroductionEvent = z.infer<typeof schemas.CharacterIntroductionEvent>;
 export type LocationChangeEvent = z.infer<typeof schemas.LocationChangeEvent>;
 export type Event = z.infer<typeof schemas.Event>;
+export type PromptConfig = z.infer<typeof schemas.PromptConfig>;
 export type State = z.infer<typeof schemas.State>;
 
 export const initialState: State = schemas.State.parse({
-  apiUrl: "http://localhost:8080/v1/",
-  apiKey: "",
-  model: "",
-  contextLength: 16384,
-  inputLength: 16384,
-  generationParams: {
-    temperature: 0.5,
-  },
-  narrationParams: {
-    temperature: 0.6,
-    min_p: 0.03,
-    dry_multiplier: 0.8,
-  },
-  updateInterval: 200,
-  logPrompts: false,
-  logParams: false,
-  logResponses: false,
+  ...defaultLlmConfig,
+  genre: "fantasy",
   view: "welcome",
+  customPrompts: { ...defaultCustomPrompts },
+  protagonistGuidance: "",
+  startingLocationGuidance: "",
+  startingCharactersGuidance: "",
   world: {
     name: "[name]",
     description: "[description]",
@@ -66,6 +58,7 @@ export const initialState: State = schemas.State.parse({
   violentContentLevel: "regular",
   events: [],
   actions: [],
+  history: [],
 });
 
 export type Plugin = Partial<{

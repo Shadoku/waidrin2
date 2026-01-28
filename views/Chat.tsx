@@ -8,7 +8,7 @@ import ActionChoice from "@/components/ActionChoice";
 import ErrorBar from "@/components/ErrorBar";
 import EventView from "@/components/EventView";
 import ProcessingBar from "@/components/ProcessingBar";
-import { abort, isAbortError, next } from "@/lib/engine";
+import { abort, isAbortError, next, regenerate, undo } from "@/lib/engine";
 import { useStateStore } from "@/lib/state";
 
 export default function Chat() {
@@ -38,10 +38,11 @@ export default function Chat() {
     }
   };
 
-  const { events, actions } = useStateStore(
+  const { events, actions, history } = useStateStore(
     useShallow((state) => ({
       events: state.events,
       actions: state.actions,
+      history: state.history,
     })),
   );
 
@@ -75,6 +76,14 @@ export default function Chat() {
     }
   }, []);
 
+  useEffect(() => {
+    const lastActionEvent = [...events].reverse().find((event) => event.type === "action");
+    setLastAction(lastActionEvent ? lastActionEvent.action : undefined);
+  }, [events]);
+
+  const canUndo = history.length > 0 && history[history.length - 1].view === "chat";
+  const canRegenerate = canUndo;
+
   return (
     <Flex width="100%" justify="center">
       <Flex
@@ -87,7 +96,7 @@ export default function Chat() {
           <Flex direction="column">
             {events.map((event, index) => (
               // biome-ignore lint/suspicious/noArrayIndexKey: Events are append-only, so this is valid.
-              <EventView key={index} event={event} />
+              <EventView key={index} event={event} index={index} />
             ))}
           </Flex>
         </ScrollArea>
@@ -98,6 +107,15 @@ export default function Chat() {
               setLastAction(action);
               doAction(action);
             }}
+            onUndo={() => {
+              undo();
+            }}
+            onRegenerate={() => {
+              regenerate();
+              doAction(lastAction);
+            }}
+            canUndo={canUndo}
+            canRegenerate={canRegenerate}
           />
         )}
 

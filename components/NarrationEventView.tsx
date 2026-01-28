@@ -1,18 +1,42 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 // Copyright (C) 2025  Philipp Emanuel Weidmann <pew@worldwidemann.com>
 
-import { Box, HoverCard, Link, Text } from "@radix-ui/themes";
-import { useCallback, useMemo } from "react";
+import { Box, Button, Flex, HoverCard, Link, Text, TextArea } from "@radix-ui/themes";
+import { useCallback, useMemo, useState } from "react";
 import Markdown from "react-markdown";
 import { useShallow } from "zustand/shallow";
 import { type NarrationEvent, useStateStore } from "@/lib/state";
 import CharacterView from "./CharacterView";
 
-export default function NarrationEventView({ event }: { event: NarrationEvent }) {
-  const { characters } = useStateStore(
+export default function NarrationEventView({ event, index }: { event: NarrationEvent; index: number }) {
+  const [isEditing, setIsEditing] = useState(false);
+  const [draft, setDraft] = useState(event.text);
+
+  const { characters, setState } = useStateStore(
     useShallow((state) => ({
       characters: state.characters,
+      setState: state.set,
     })),
+  );
+
+  const computeReferencedCharacterIndices = useCallback(
+    (text: string) => {
+      const referenced = new Set<number>();
+
+      for (const match of text.matchAll(/\*\*(.+?)(?:'s?)?\*\*/g)) {
+        const name = match[1];
+
+        for (const [characterIndex, character] of characters.entries()) {
+          if (character.name === name || character.name.split(" ")[0] === name) {
+            referenced.add(characterIndex);
+            break;
+          }
+        }
+      }
+
+      return Array.from(referenced);
+    },
+    [characters],
   );
 
   // Hack to highlight dialogue in text:
@@ -85,7 +109,66 @@ export default function NarrationEventView({ event }: { event: NarrationEvent })
 
   return (
     <Box className="text-(length:--font-size-5) [&_p]:mb-[0.7em]" width="100%" p="6">
-      <Markdown components={components}>{markdown}</Markdown>
+      <Flex direction="column" gap="3">
+        {isEditing ? (
+          <TextArea
+            value={draft}
+            onChange={(event) => setDraft(event.target.value)}
+            className="[&_textarea]:text-(length:--font-size-5)"
+            size="3"
+            resize="vertical"
+            maxLength={5000}
+          />
+        ) : (
+          <Markdown components={components}>{markdown}</Markdown>
+        )}
+
+        <Flex justify="end" gap="2">
+          {isEditing ? (
+            <>
+              <Button
+                variant="soft"
+                onClick={() => {
+                  if (!draft.trim()) {
+                    return;
+                  }
+                  setState((state) => {
+                    const target = state.events[index];
+                    if (target?.type === "narration") {
+                      target.text = draft;
+                      target.referencedCharacterIndices = computeReferencedCharacterIndices(draft);
+                    }
+                  });
+                  setIsEditing(false);
+                }}
+              >
+                Save
+              </Button>
+              <Button
+                variant="ghost"
+                color="gray"
+                onClick={() => {
+                  setDraft(event.text);
+                  setIsEditing(false);
+                }}
+              >
+                Cancel
+              </Button>
+            </>
+          ) : (
+            <Button
+              variant="ghost"
+              color="gray"
+              onClick={() => {
+                setDraft(event.text);
+                setIsEditing(true);
+              }}
+            >
+              Edit
+            </Button>
+          )}
+        </Flex>
+      </Flex>
     </Box>
   );
 }

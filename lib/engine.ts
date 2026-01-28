@@ -35,6 +35,10 @@ export async function next(
   const backend = getBackend();
 
   await getState().setAsync(async (state) => {
+    const snapshotState = () => {
+      const snapshot = schemas.StateBase.parse(current(state));
+      state.history.push(snapshot);
+    };
     let step: [string, string];
 
     const onToken = throttle(
@@ -119,8 +123,10 @@ export async function next(
       schemas.State.parse(state);
 
       if (state.view === "welcome") {
+        snapshotState();
         state.view = "connection";
       } else if (state.view === "connection") {
+        snapshotState();
         step = ["Checking connection", "If this takes longer than a few seconds, there is probably something wrong"];
         const testObject = await backend.getObject({ system: "test", user: "test" }, z.literal("waidrin"), onToken);
         if (testObject !== "waidrin") {
@@ -129,10 +135,12 @@ export async function next(
 
         state.view = "genre";
       } else if (state.view === "genre") {
+        snapshotState();
         state.view = "character";
       } else if (state.view === "character") {
+        snapshotState();
         step = ["Generating world", "This typically takes between 10 and 30 seconds"];
-        state.world = await backend.getObject(generateWorldPrompt, schemas.World, onToken);
+        state.world = await backend.getObject(generateWorldPrompt(state), schemas.World, onToken);
 
         step = ["Generating protagonist", "This typically takes between 10 and 30 seconds"];
         state.protagonist = await backend.getObject(generateProtagonistPrompt(state), RawCharacter, onToken);
@@ -140,6 +148,7 @@ export async function next(
 
         state.view = "scenario";
       } else if (state.view === "scenario") {
+        snapshotState();
         step = ["Generating starting location", "This typically takes between 10 and 30 seconds"];
         const location = await backend.getObject(generateStartingLocationPrompt(state), schemas.Location, onToken);
 
@@ -167,6 +176,7 @@ export async function next(
 
         state.view = "chat";
       } else if (state.view === "chat") {
+        snapshotState();
         state.actions = [];
         updateState();
 
@@ -277,8 +287,64 @@ export function back(): void {
   });
 }
 
+export function undo(): void {
+  getState().set((state) => {
+    const previous = state.history.pop();
+    if (previous) {
+      Object.assign(state, previous);
+    }
+  });
+}
+
+export function regenerate(): void {
+  getState().set((state) => {
+    if (state.view !== "chat" || state.history.length === 0) {
+      return;
+    }
+
+    const previous = state.history[state.history.length - 1];
+    if (!previous || previous.view !== "chat") {
+      return;
+    }
+
+    const preservedHistory = [...state.history];
+    Object.assign(state, previous);
+    state.history = preservedHistory;
+  });
+}
+
 export function reset(): void {
   getState().set(initialState);
+}
+
+function resetScenarioState(view: "character" | "scenario"): void {
+  getState().set((state) => {
+    state.view = view;
+    state.world = initialState.world;
+    state.locations = [];
+    state.characters = [];
+    state.protagonist = initialState.protagonist;
+    state.protagonistGuidance = initialState.protagonistGuidance;
+    state.startingLocationGuidance = initialState.startingLocationGuidance;
+    state.startingCharactersGuidance = initialState.startingCharactersGuidance;
+    state.hiddenDestiny = initialState.hiddenDestiny;
+    state.betrayal = initialState.betrayal;
+    state.oppositeSexMagnet = initialState.oppositeSexMagnet;
+    state.sameSexMagnet = initialState.sameSexMagnet;
+    state.sexualContentLevel = initialState.sexualContentLevel;
+    state.violentContentLevel = initialState.violentContentLevel;
+    state.events = [];
+    state.actions = [];
+    state.history = [];
+  });
+}
+
+export function newCharacter(): void {
+  resetScenarioState("character");
+}
+
+export function newScenario(): void {
+  resetScenarioState("scenario");
 }
 
 export function abort(): void {

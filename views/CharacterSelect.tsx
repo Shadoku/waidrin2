@@ -1,7 +1,8 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 // Copyright (C) 2025  Philipp Emanuel Weidmann <pew@worldwidemann.com>
 
-import { RadioCards, SegmentedControl, Text } from "@radix-ui/themes";
+import { Box, RadioCards, SegmentedControl, Text, TextArea } from "@radix-ui/themes";
+import { Label } from "radix-ui";
 import { GiFemale, GiMale } from "react-icons/gi";
 import { useShallow } from "zustand/shallow";
 import ImageOption from "@/components/ImageOption";
@@ -9,10 +10,11 @@ import WizardStep from "@/components/WizardStep";
 import { type Gender, type Race, useStateStore } from "@/lib/state";
 
 export default function CharacterSelect({ onNext, onBack }: { onNext?: () => void; onBack?: () => void }) {
-  const { gender, race, setState } = useStateStore(
+  const { gender, race, protagonistGuidance, setState } = useStateStore(
     useShallow((state) => ({
       gender: state.protagonist.gender,
       race: state.protagonist.race,
+      protagonistGuidance: state.protagonistGuidance,
       setState: state.set,
     })),
   );
@@ -51,6 +53,26 @@ export default function CharacterSelect({ onNext, onBack }: { onNext?: () => voi
         <ImageOption title="Elf" image={`${gender}-elf`} value="elf" />
         <ImageOption title="Dwarf" image={`${gender}-dwarf`} value="dwarf" />
       </RadioCards.Root>
+
+      <Box mt="6">
+        <Label.Root>
+          <Text size="5" color="cyan">
+            Optional character description
+          </Text>
+          <TextArea
+            value={protagonistGuidance}
+            onChange={(event) =>
+              setState((state) => {
+                state.protagonistGuidance = event.target.value;
+              })
+            }
+            className="mt-2 [&_textarea]:text-(length:--font-size-4)"
+            size="3"
+            resize="vertical"
+            placeholder="Add details, personality traits, or a backstory hook to guide generation..."
+          />
+        </Label.Root>
+      </Box>
     </WizardStep>
   );
 }
