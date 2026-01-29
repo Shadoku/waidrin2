@@ -26,6 +26,41 @@ function makePrompt(userPrompt: string, systemPrompt: string): Prompt {
   };
 }
 
+export function generateCustomPromptConfigPrompt(description: string): Prompt {
+  const trimmed = description.trim();
+  return makePrompt(
+    `
+You are a prompt engineer for a text-based role-playing game. Create a complete set of prompt templates
+for a custom genre described below. Return a JSON object that matches this shape exactly:
+{
+  "systemPrompt": string,
+  "worldPrompt": string,
+  "protagonistPrompt": string,
+  "startingLocationPrompt": string,
+  "startingCharactersPrompt": string,
+  "mainPromptPreamble": string,
+  "narrationPrompt": string,
+  "actionsPrompt": string,
+  "checkLocationPrompt": string,
+  "newLocationPrompt": string,
+  "newCharactersPrompt": string,
+  "summarizePrompt": string
+}
+
+Guidelines:
+- Use plain text with clear instructions suitable for LLM prompting.
+- Preserve these template variables where they make sense: {{worldName}}, {{worldDescription}}, {{protagonistName}},
+  {{protagonistGender}}, {{protagonistRace}}, {{protagonistBiography}}, {{locationName}}, {{locationDescription}},
+  {{locationTypes}}, {{actionLine}}, {{accompanyingCharactersLine}}, {{sceneContext}}, {{sceneText}}.
+- Keep prompts concise and focused on the described genre.
+
+Genre description:
+${trimmed}
+`,
+    "You are a meticulous prompt engineer who returns only valid JSON for structured prompt templates.",
+  );
+}
+
 function getPromptConfig(state: State): GenrePromptConfig {
   if (state.genre === "custom") {
     return state.customPrompts;

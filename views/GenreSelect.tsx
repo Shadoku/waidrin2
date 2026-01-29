@@ -7,7 +7,14 @@ import { useMemo, useState } from "react";
 import { useShallow } from "zustand/shallow";
 import ImageOption from "@/components/ImageOption";
 import WizardStep from "@/components/WizardStep";
-import { getStartingCharactersPromptText, getStartingLocationPromptText, getSystemPrompt } from "@/lib/prompts";
+import { getBackend } from "@/lib/backend";
+import {
+  generateCustomPromptConfigPrompt,
+  getStartingCharactersPromptText,
+  getStartingLocationPromptText,
+  getSystemPrompt,
+} from "@/lib/prompts";
+import * as schemas from "@/lib/schemas";
 import { useStateStore } from "@/lib/state";
 
 export default function GenreSelect({ onNext, onBack }: { onNext?: () => void; onBack?: () => void }) {
@@ -39,6 +46,9 @@ export default function GenreSelect({ onNext, onBack }: { onNext?: () => void; o
   const [systemPromptDraft, setSystemPromptDraft] = useState("");
   const [startingLocationDraft, setStartingLocationDraft] = useState("");
   const [startingCharactersDraft, setStartingCharactersDraft] = useState("");
+  const [customPromptDescription, setCustomPromptDescription] = useState("");
+  const [customPromptError, setCustomPromptError] = useState("");
+  const [customPromptGenerating, setCustomPromptGenerating] = useState(false);
 
   const effectiveSystemPrompt = useMemo(() => getSystemPrompt(fullState), [fullState]);
   const effectiveStartingLocation = useMemo(() => getStartingLocationPromptText(fullState), [fullState]);
@@ -49,6 +59,29 @@ export default function GenreSelect({ onNext, onBack }: { onNext?: () => void; o
     setStartingLocationDraft(startingLocationPromptOverride.trim() || effectiveStartingLocation);
     setStartingCharactersDraft(startingCharactersPromptOverride.trim() || effectiveStartingCharacters);
     setReviewOpen(true);
+  };
+
+  const generateCustomPrompts = async () => {
+    if (!customPromptDescription.trim()) {
+      setCustomPromptError("Add a short description before generating prompts.");
+      return;
+    }
+
+    setCustomPromptError("");
+    setCustomPromptGenerating(true);
+
+    try {
+      const prompt = generateCustomPromptConfigPrompt(customPromptDescription);
+      const generated = await getBackend().getObject(prompt, schemas.PromptConfig);
+      setState((state) => {
+        state.customPrompts = generated;
+      });
+    } catch (error) {
+      const message = error instanceof Error ? error.message : String(error);
+      setCustomPromptError(message || "Unable to generate prompts.");
+    } finally {
+      setCustomPromptGenerating(false);
+    }
   };
 
   const promptFields: Array<{ key: keyof typeof customPrompts; label: string; description?: string }> = [
@@ -145,6 +178,32 @@ export default function GenreSelect({ onNext, onBack }: { onNext?: () => void; o
             <code>{"{{accompanyingCharactersLine}}"}</code>, <code>{"{{sceneContext}}"}</code>, and{" "}
             <code>{"{{sceneText}}"}</code>.
           </Text>
+
+          <Box className="grid gap-4" mb="5">
+            <Label.Root>
+              <Text size="5" color="cyan">
+                Generate prompts from a description
+              </Text>
+              <TextArea
+                value={customPromptDescription}
+                onChange={(event) => setCustomPromptDescription(event.target.value)}
+                className="mt-2 [&_textarea]:text-(length:--font-size-4)"
+                size="3"
+                resize="vertical"
+                placeholder="Describe the genre, tone, and key themes for the prompts..."
+              />
+            </Label.Root>
+            <Flex gap="3" align="center">
+              <Button onClick={generateCustomPrompts} disabled={customPromptGenerating}>
+                {customPromptGenerating ? "Generating..." : "Generate prompts"}
+              </Button>
+              {customPromptError && (
+                <Text size="4" color="red">
+                  {customPromptError}
+                </Text>
+              )}
+            </Flex>
+          </Box>
 
           <Box className="grid gap-4">
             {promptFields.map((field) => (
