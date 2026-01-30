@@ -98,16 +98,123 @@ export default function Chat() {
   const canRegenerate = canUndo;
 
   const currentLocation = locations[protagonist.locationIndex];
-  const partyMembers = characters.filter((character) => character.locationIndex === protagonist.locationIndex);
+  const latestLocationChange = [...events].reverse().find((event) => event.type === "location_change");
+  const partyMemberIndices =
+    latestLocationChange && latestLocationChange.type === "location_change"
+      ? latestLocationChange.presentCharacterIndices
+      : [];
+  const partyMembers = partyMemberIndices.map((index) => characters[index]).filter(Boolean);
+  const isPaneOpen = activePane !== null;
+  const paneWidth = "22rem";
 
   return (
     <Flex width="100%" justify="center">
-      <Flex className="w-full max-w-[90rem]" gap="6">
+      <Box
+        className="w-full max-w-[90rem] grid transition-[grid-template-columns] duration-300 ease-in-out"
+        style={{
+          gridTemplateColumns: isPaneOpen ? `${paneWidth} minmax(0, 1fr)` : `0 minmax(0, 1fr)`,
+        }}
+      >
         <Flex
-          className="bg-black border-l border-r border-(--gold-10) shadow-[0_0_30px_var(--slate-10)] flex-1 min-w-0 max-w-[60rem]"
+          className={`bg-(--slate-1) border border-(--gold-10) shadow-[0_0_20px_var(--slate-9)] overflow-hidden transition-opacity duration-300 ${
+            isPaneOpen ? "opacity-100" : "opacity-0 pointer-events-none"
+          }`}
           direction="column"
           height="100vh"
         >
+          <Flex align="center" justify="between" className="border-b border-(--gold-9)" p="4">
+            <Text size="5" weight="bold">
+              {activePane === "player" && "Player character"}
+              {activePane === "party" && "Party"}
+              {activePane === "location" && "Location"}
+              {activePane === "inventory" && "Inventory"}
+              {activePane === "options" && "Options"}
+            </Text>
+            <Button variant="ghost" color="gold" onClick={() => setActivePane(null)}>
+              Close
+            </Button>
+          </Flex>
+          <ScrollArea className="flex-1" type="auto">
+            <Box p="4">
+              {activePane === "player" && <CharacterView character={protagonist} />}
+
+              {activePane === "party" && (
+                <Flex direction="column" gap="4">
+                  {partyMembers.length === 0 && <Text color="gray">No party members yet.</Text>}
+                  {partyMembers.map((member) => (
+                    <CharacterView key={`${member.name}-${member.locationIndex}`} character={member} />
+                  ))}
+                </Flex>
+              )}
+
+              {activePane === "location" && (
+                <Flex direction="column" gap="3">
+                  {currentLocation ? (
+                    <>
+                      <Text size="5" weight="bold">
+                        {currentLocation.name}
+                      </Text>
+                      <Text size="2" color="gray">
+                        {currentLocation.type}
+                      </Text>
+                      <Text>{currentLocation.description}</Text>
+                    </>
+                  ) : (
+                    <Text color="gray">No location yet.</Text>
+                  )}
+                </Flex>
+              )}
+
+              {activePane === "inventory" && (
+                <Flex direction="column" gap="3">
+                  {inventory.length === 0 && <Text color="gray">Inventory is empty.</Text>}
+                  {inventory.map((item) => (
+                    <Box key={item.name} className="border border-(--slate-6) rounded-[12px]" p="3">
+                      <Text weight="bold">{item.name}</Text>
+                      <Text as="div" size="2" color="gray">
+                        {item.description}
+                      </Text>
+                    </Box>
+                  ))}
+                </Flex>
+              )}
+
+              {activePane === "options" && (
+                <Flex direction="column" gap="3">
+                  <Box className="border border-(--slate-6) rounded-[12px]" p="3">
+                    <Text weight="bold">Genre</Text>
+                    <Text as="div" size="2" color="gray">
+                      {genre}
+                    </Text>
+                  </Box>
+                  <Box className="border border-(--slate-6) rounded-[12px]" p="3">
+                    <Text weight="bold" mb="2" as="div">
+                      Content
+                    </Text>
+                    <SegmentedControl.Root
+                      value={settingsSection}
+                      onValueChange={(value) => setSettingsSection(value as "sexual" | "violence")}
+                    >
+                      <SegmentedControl.Item value="sexual">Sexual</SegmentedControl.Item>
+                      <SegmentedControl.Item value="violence">Violence</SegmentedControl.Item>
+                    </SegmentedControl.Root>
+                    <Text as="div" size="2" color="gray" mt="2">
+                      {settingsSection === "sexual"
+                        ? `Level: ${sexualContentLevel}`
+                        : `Level: ${violentContentLevel}`}
+                    </Text>
+                  </Box>
+                </Flex>
+              )}
+            </Box>
+          </ScrollArea>
+        </Flex>
+        <Flex className="justify-center min-w-0" height="100vh">
+          <Flex
+            className="bg-black border-l border-r border-(--gold-10) shadow-[0_0_30px_var(--slate-10)] flex-1 min-w-0 max-w-[60rem]"
+            direction="column"
+            height="100%"
+          >
           <ScrollArea ref={eventsContainerRef} className="flex-1">
             <Flex direction="column">
               {events.map((event, index) => (
@@ -178,102 +285,8 @@ export default function Chat() {
             ))}
           </Flex>
         </Flex>
-
-        {activePane && (
-          <Flex
-            className="bg-(--slate-1) border border-(--gold-10) shadow-[0_0_20px_var(--slate-9)] w-[22rem] shrink-0"
-            direction="column"
-            height="100vh"
-          >
-            <Flex align="center" justify="between" className="border-b border-(--gold-9)" p="4">
-              <Text size="5" weight="bold">
-                {activePane === "player" && "Player character"}
-                {activePane === "party" && "Party"}
-                {activePane === "location" && "Location"}
-                {activePane === "inventory" && "Inventory"}
-                {activePane === "options" && "Options"}
-              </Text>
-              <Button variant="ghost" color="gold" onClick={() => setActivePane(null)}>
-                Close
-              </Button>
-            </Flex>
-            <ScrollArea className="flex-1" type="auto">
-              <Box p="4">
-                {activePane === "player" && <CharacterView character={protagonist} />}
-
-                {activePane === "party" && (
-                  <Flex direction="column" gap="4">
-                    {partyMembers.length === 0 && <Text color="gray">No party members yet.</Text>}
-                    {partyMembers.map((member) => (
-                      <CharacterView key={`${member.name}-${member.locationIndex}`} character={member} />
-                    ))}
-                  </Flex>
-                )}
-
-                {activePane === "location" && (
-                  <Flex direction="column" gap="3">
-                    {currentLocation ? (
-                      <>
-                        <Text size="5" weight="bold">
-                          {currentLocation.name}
-                        </Text>
-                        <Text size="2" color="gray">
-                          {currentLocation.type}
-                        </Text>
-                        <Text>{currentLocation.description}</Text>
-                      </>
-                    ) : (
-                      <Text color="gray">No location yet.</Text>
-                    )}
-                  </Flex>
-                )}
-
-                {activePane === "inventory" && (
-                  <Flex direction="column" gap="3">
-                    {inventory.length === 0 && <Text color="gray">Inventory is empty.</Text>}
-                    {inventory.map((item) => (
-                      <Box key={item.name} className="border border-(--slate-6) rounded-[12px]" p="3">
-                        <Text weight="bold">{item.name}</Text>
-                        <Text as="div" size="2" color="gray">
-                          {item.description}
-                        </Text>
-                      </Box>
-                    ))}
-                  </Flex>
-                )}
-
-                {activePane === "options" && (
-                  <Flex direction="column" gap="3">
-                    <Box className="border border-(--slate-6) rounded-[12px]" p="3">
-                      <Text weight="bold">Genre</Text>
-                      <Text as="div" size="2" color="gray">
-                        {genre}
-                      </Text>
-                    </Box>
-                    <Box className="border border-(--slate-6) rounded-[12px]" p="3">
-                      <Text weight="bold" mb="2" as="div">
-                        Content
-                      </Text>
-                      <SegmentedControl.Root
-                        value={settingsSection}
-                        onValueChange={(value) => setSettingsSection(value as "sexual" | "violence")}
-                      >
-                        <SegmentedControl.Item value="sexual">Sexual</SegmentedControl.Item>
-                        <SegmentedControl.Item value="violence">Violence</SegmentedControl.Item>
-                      </SegmentedControl.Root>
-                      <Text as="div" size="2" color="gray" mt="2">
-                        {settingsSection === "sexual"
-                          ? `Level: ${sexualContentLevel}`
-                          : `Level: ${violentContentLevel}`}
-                      </Text>
-                    </Box>
-                  </Flex>
-                )}
-              </Box>
-            </ScrollArea>
-          </Flex>
-        )}
-      </Flex>
+        </Flex>
+      </Box>
     </Flex>
   );
 }
