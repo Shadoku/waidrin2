@@ -136,6 +136,33 @@ export const useStateStore = create<StoredState>()(
     })),
     {
       name: "state",
+      version: 1,
+      migrate: (persistedState) => {
+        const baseDefaults = schemas.StateBase.parse(initialState);
+        const storedState = (persistedState ?? {}) as Partial<StoredState>;
+
+        const normalizeInventory = (inventory: unknown) =>
+          Array.isArray(inventory) ? (inventory as Item[]) : baseDefaults.inventory;
+
+        const normalizeHistoryEntry = (entry: unknown) => {
+          const historyEntry = (entry ?? {}) as Partial<State>;
+          return {
+            ...baseDefaults,
+            ...historyEntry,
+            inventory: normalizeInventory(historyEntry.inventory),
+          };
+        };
+
+        const history = Array.isArray(storedState.history)
+          ? storedState.history.map((entry) => normalizeHistoryEntry(entry))
+          : [];
+
+        return {
+          ...storedState,
+          inventory: normalizeInventory(storedState.inventory),
+          history,
+        } as StoredState;
+      },
       partialize: (state) => {
         // Don't persist functions and class instances.
         const persistedState: Partial<StoredState> = { ...state };
