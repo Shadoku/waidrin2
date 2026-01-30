@@ -153,7 +153,12 @@ export default function Chat() {
             />
           )}
 
-          <Flex className="border-t border-(--gold-9) bg-(--slate-2)" justify="space-around" p="3" gap="2">
+          <Flex
+            className="border-t border-(--gold-9) bg-(--slate-2) flex-wrap"
+            justify="between"
+            p="3"
+            gap="2"
+          >
             {([
               { key: "player", label: "Player character" },
               { key: "party", label: "Party" },
