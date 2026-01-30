@@ -105,99 +105,178 @@ export default function Chat() {
       : [];
   const partyMembers = partyMemberIndices.map((index) => characters[index]).filter(Boolean);
   const isPaneOpen = activePane !== null;
-  const paneWidth = "22rem";
+  const chatMaxWidth = "60rem";
+  const paneMinWidth = "18rem";
 
   return (
-    <Flex width="100%" justify="end" className="pr-4">
-      <Box
-        className="w-full max-w-[90rem] grid transition-[grid-template-columns] duration-300 ease-in-out ml-auto"
-        style={{
-          gridTemplateColumns: isPaneOpen ? `${paneWidth} minmax(0, 1fr)` : `0 minmax(0, 1fr)`,
-        }}
-      >
-        <Flex
-          className={`bg-(--slate-1) border border-(--gold-10) shadow-[0_0_20px_var(--slate-9)] overflow-hidden transition-opacity duration-300 ${
-            isPaneOpen ? "opacity-100" : "opacity-0 pointer-events-none"
-          }`}
-          direction="column"
-          height="100vh"
+    <Flex width="100%">
+      {isPaneOpen ? (
+        <Box
+          className="w-full grid transition-[grid-template-columns] duration-300 ease-in-out"
+          style={{
+            gridTemplateColumns: `minmax(0, 1fr) minmax(0, ${chatMaxWidth}) minmax(${paneMinWidth}, 1fr)`,
+          }}
         >
-          <Flex align="center" justify="between" className="border-b border-(--gold-9)" p="4">
-            <Text size="5" weight="bold">
-              {activePane === "player" && "Player character"}
-              {activePane === "party" && "Party"}
-              {activePane === "location" && "Location"}
-              {activePane === "inventory" && "Inventory"}
-              {activePane === "options" && "Options"}
-            </Text>
-            <Button variant="ghost" color="gold" onClick={() => setActivePane(null)}>
-              Close
-            </Button>
+          <Box />
+          <Flex className="justify-center min-w-0" height="100vh">
+            <Flex
+              className="bg-black border-l border-r border-(--gold-10) shadow-[0_0_30px_var(--slate-10)] flex-1 min-w-0"
+              direction="column"
+              height="100%"
+              style={{ maxWidth: chatMaxWidth }}
+            >
+              <ScrollArea ref={eventsContainerRef} className="flex-1">
+                <Flex direction="column">
+                  {events.map((event, index) => (
+                    // biome-ignore lint/suspicious/noArrayIndexKey: Events are append-only, so this is valid.
+                    <EventView key={index} event={event} index={index} />
+                  ))}
+                </Flex>
+              </ScrollArea>
+
+              {actions.length > 0 && !errorMessage && (
+                <ActionChoice
+                  onAction={(action) => {
+                    setLastAction(action);
+                    doAction(action);
+                  }}
+                  onUndo={() => {
+                    undo();
+                  }}
+                  onRegenerate={() => {
+                    regenerate();
+                    doAction(lastAction);
+                  }}
+                  canUndo={canUndo}
+                  canRegenerate={canRegenerate}
+                />
+              )}
+
+              {barVisible && (
+                <ProcessingBar title={barTitle} onCancel={abort}>
+                  <Text className="tabular-nums" as="div" align="right" size="4" color="lime" mr="2">
+                    {barTokenCount ? `Tokens generated: ${barTokenCount}` : "Waiting for response..."}
+                  </Text>
+                </ProcessingBar>
+              )}
+
+              {errorMessage && (
+                <ErrorBar
+                  errorMessage={errorMessage}
+                  onRetry={() => {
+                    setErrorMessage("");
+                    doAction(lastAction);
+                  }}
+                  onCancel={() => setErrorMessage("")}
+                />
+              )}
+
+              <Flex
+                className="border-t border-(--gold-9) bg-(--slate-2) flex-wrap"
+                justify="between"
+                p="3"
+                gap="2"
+              >
+                {([
+                  { key: "player", label: "Player character" },
+                  { key: "party", label: "Party" },
+                  { key: "location", label: "Location" },
+                  { key: "inventory", label: "Inventory" },
+                  { key: "options", label: "Options" },
+                ] as const).map((item) => (
+                  <Button
+                    key={item.key}
+                    variant={activePane === item.key ? "solid" : "soft"}
+                    color="gold"
+                    onClick={() => setActivePane(activePane === item.key ? null : item.key)}
+                  >
+                    {item.label}
+                  </Button>
+                ))}
+              </Flex>
+            </Flex>
           </Flex>
-          <ScrollArea className="flex-1 overflow-x-hidden" type="auto">
-            <Box p="4" className="break-words">
-              {activePane === "player" && <CharacterView character={protagonist} />}
+          <Flex
+            className="bg-(--slate-1) border border-(--gold-10) shadow-[0_0_20px_var(--slate-9)] overflow-hidden"
+            direction="column"
+            height="100vh"
+          >
+            <Flex align="center" justify="between" className="border-b border-(--gold-9)" p="4">
+              <Text size="5" weight="bold">
+                {activePane === "player" && "Player character"}
+                {activePane === "party" && "Party"}
+                {activePane === "location" && "Location"}
+                {activePane === "inventory" && "Inventory"}
+                {activePane === "options" && "Options"}
+              </Text>
+              <Button variant="ghost" color="gold" onClick={() => setActivePane(null)}>
+                Close
+              </Button>
+            </Flex>
+            <ScrollArea className="flex-1 overflow-x-hidden" type="auto">
+              <Box p="4" className="break-words">
+                {activePane === "player" && <CharacterView character={protagonist} />}
 
-              {activePane === "party" && (
-                <Flex direction="column" gap="4">
-                  {partyMembers.length === 0 && <Text color="gray">No party members yet.</Text>}
-                  {partyMembers.map((member) => (
-                    <CharacterView key={`${member.name}-${member.locationIndex}`} character={member} />
-                  ))}
-                </Flex>
-              )}
+                {activePane === "party" && (
+                  <Flex direction="column" gap="4">
+                    {partyMembers.length === 0 && <Text color="gray">No party members yet.</Text>}
+                    {partyMembers.map((member) => (
+                      <CharacterView key={`${member.name}-${member.locationIndex}`} character={member} />
+                    ))}
+                  </Flex>
+                )}
 
-              {activePane === "location" && (
-                <Flex direction="column" gap="3">
-                  {currentLocation ? (
-                    <>
-                      <Text size="5" weight="bold">
-                        {currentLocation.name}
-                      </Text>
-                      <Text size="2" color="gray">
-                        {currentLocation.type}
-                      </Text>
-                      <Text>{currentLocation.description}</Text>
-                    </>
-                  ) : (
-                    <Text color="gray">No location yet.</Text>
-                  )}
-                </Flex>
-              )}
+                {activePane === "location" && (
+                  <Flex direction="column" gap="3">
+                    {currentLocation ? (
+                      <>
+                        <Text size="5" weight="bold">
+                          {currentLocation.name}
+                        </Text>
+                        <Text size="2" color="gray">
+                          {currentLocation.type}
+                        </Text>
+                        <Text>{currentLocation.description}</Text>
+                      </>
+                    ) : (
+                      <Text color="gray">No location yet.</Text>
+                    )}
+                  </Flex>
+                )}
 
-              {activePane === "inventory" && (
-                <Flex direction="column" gap="3">
-                  {inventory.length === 0 && <Text color="gray">Inventory is empty.</Text>}
-                  {inventory.map((item) => (
-                    <Box key={item.name} className="border border-(--slate-6) rounded-[12px]" p="3">
-                      <Text weight="bold">{item.name}</Text>
-                      <Text as="div" size="2" color="gray">
-                        {item.description}
-                      </Text>
-                    </Box>
-                  ))}
-                </Flex>
-              )}
+                {activePane === "inventory" && (
+                  <Flex direction="column" gap="3">
+                    {inventory.length === 0 && <Text color="gray">Inventory is empty.</Text>}
+                    {inventory.map((item) => (
+                      <Box key={item.name} className="border border-(--slate-6) rounded-[12px]" p="3">
+                        <Text weight="bold">{item.name}</Text>
+                        <Text as="div" size="2" color="gray">
+                          {item.description}
+                        </Text>
+                      </Box>
+                    ))}
+                  </Flex>
+                )}
 
                 {activePane === "options" && (
                   <Flex direction="column" gap="3">
                     <Box className="border border-(--slate-6) rounded-[12px]" p="3">
                       <Text weight="bold">Genre</Text>
-                    <Text as="div" size="2" color="gray">
-                      {genre}
-                    </Text>
-                  </Box>
+                      <Text as="div" size="2" color="gray">
+                        {genre}
+                      </Text>
+                    </Box>
                     <Box className="border border-(--slate-6) rounded-[12px]" p="3">
                       <Text weight="bold" mb="2" as="div">
                         Content
                       </Text>
-                    <SegmentedControl.Root
-                      value={settingsSection}
-                      onValueChange={(value) => setSettingsSection(value as "sexual" | "violence")}
-                    >
-                      <SegmentedControl.Item value="sexual">Sexual</SegmentedControl.Item>
-                      <SegmentedControl.Item value="violence">Violence</SegmentedControl.Item>
-                    </SegmentedControl.Root>
+                      <SegmentedControl.Root
+                        value={settingsSection}
+                        onValueChange={(value) => setSettingsSection(value as "sexual" | "violence")}
+                      >
+                        <SegmentedControl.Item value="sexual">Sexual</SegmentedControl.Item>
+                        <SegmentedControl.Item value="violence">Violence</SegmentedControl.Item>
+                      </SegmentedControl.Root>
                       <Text as="div" size="2" color="gray" mt="2">
                         {settingsSection === "sexual"
                           ? `Level: ${sexualContentLevel}`
@@ -231,87 +310,90 @@ export default function Chat() {
                     </Box>
                   </Flex>
                 )}
-            </Box>
-          </ScrollArea>
-        </Flex>
-        <Flex className="justify-center min-w-0" height="100vh">
+              </Box>
+            </ScrollArea>
+          </Flex>
+        </Box>
+      ) : (
+        <Flex className="w-full justify-center">
           <Flex
-            className="bg-black border-l border-r border-(--gold-10) shadow-[0_0_30px_var(--slate-10)] flex-1 min-w-0 max-w-[60rem]"
+            className="bg-black border-l border-r border-(--gold-10) shadow-[0_0_30px_var(--slate-10)] flex-1 min-w-0"
             direction="column"
-            height="100%"
+            height="100vh"
+            style={{ maxWidth: chatMaxWidth }}
           >
-          <ScrollArea ref={eventsContainerRef} className="flex-1">
-            <Flex direction="column">
-              {events.map((event, index) => (
-                // biome-ignore lint/suspicious/noArrayIndexKey: Events are append-only, so this is valid.
-                <EventView key={index} event={event} index={index} />
+            <ScrollArea ref={eventsContainerRef} className="flex-1">
+              <Flex direction="column">
+                {events.map((event, index) => (
+                  // biome-ignore lint/suspicious/noArrayIndexKey: Events are append-only, so this is valid.
+                  <EventView key={index} event={event} index={index} />
+                ))}
+              </Flex>
+            </ScrollArea>
+
+            {actions.length > 0 && !errorMessage && (
+              <ActionChoice
+                onAction={(action) => {
+                  setLastAction(action);
+                  doAction(action);
+                }}
+                onUndo={() => {
+                  undo();
+                }}
+                onRegenerate={() => {
+                  regenerate();
+                  doAction(lastAction);
+                }}
+                canUndo={canUndo}
+                canRegenerate={canRegenerate}
+              />
+            )}
+
+            {barVisible && (
+              <ProcessingBar title={barTitle} onCancel={abort}>
+                <Text className="tabular-nums" as="div" align="right" size="4" color="lime" mr="2">
+                  {barTokenCount ? `Tokens generated: ${barTokenCount}` : "Waiting for response..."}
+                </Text>
+              </ProcessingBar>
+            )}
+
+            {errorMessage && (
+              <ErrorBar
+                errorMessage={errorMessage}
+                onRetry={() => {
+                  setErrorMessage("");
+                  doAction(lastAction);
+                }}
+                onCancel={() => setErrorMessage("")}
+              />
+            )}
+
+            <Flex
+              className="border-t border-(--gold-9) bg-(--slate-2) flex-wrap"
+              justify="between"
+              p="3"
+              gap="2"
+            >
+              {([
+                { key: "player", label: "Player character" },
+                { key: "party", label: "Party" },
+                { key: "location", label: "Location" },
+                { key: "inventory", label: "Inventory" },
+                { key: "options", label: "Options" },
+              ] as const).map((item) => (
+                <Button
+                  key={item.key}
+                  variant={activePane === item.key ? "solid" : "soft"}
+                  color="gold"
+                  onClick={() => setActivePane(activePane === item.key ? null : item.key)}
+                >
+                  {item.label}
+                </Button>
               ))}
             </Flex>
-          </ScrollArea>
-
-          {actions.length > 0 && !errorMessage && (
-            <ActionChoice
-              onAction={(action) => {
-                setLastAction(action);
-                doAction(action);
-              }}
-              onUndo={() => {
-                undo();
-              }}
-              onRegenerate={() => {
-                regenerate();
-                doAction(lastAction);
-              }}
-              canUndo={canUndo}
-              canRegenerate={canRegenerate}
-            />
-          )}
-
-          {barVisible && (
-            <ProcessingBar title={barTitle} onCancel={abort}>
-              <Text className="tabular-nums" as="div" align="right" size="4" color="lime" mr="2">
-                {barTokenCount ? `Tokens generated: ${barTokenCount}` : "Waiting for response..."}
-              </Text>
-            </ProcessingBar>
-          )}
-
-          {errorMessage && (
-            <ErrorBar
-              errorMessage={errorMessage}
-              onRetry={() => {
-                setErrorMessage("");
-                doAction(lastAction);
-              }}
-              onCancel={() => setErrorMessage("")}
-            />
-          )}
-
-          <Flex
-            className="border-t border-(--gold-9) bg-(--slate-2) flex-wrap"
-            justify="between"
-            p="3"
-            gap="2"
-          >
-            {([
-              { key: "player", label: "Player character" },
-              { key: "party", label: "Party" },
-              { key: "location", label: "Location" },
-              { key: "inventory", label: "Inventory" },
-              { key: "options", label: "Options" },
-            ] as const).map((item) => (
-              <Button
-                key={item.key}
-                variant={activePane === item.key ? "solid" : "soft"}
-                color="gold"
-                onClick={() => setActivePane(activePane === item.key ? null : item.key)}
-              >
-                {item.label}
-              </Button>
-            ))}
           </Flex>
         </Flex>
-        </Flex>
-      </Box>
+      )}
     </Flex>
   );
 }
