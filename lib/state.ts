@@ -19,12 +19,14 @@ export type Race = z.infer<typeof schemas.Race>;
 export type Character = z.infer<typeof schemas.Character>;
 export type LocationType = z.infer<typeof schemas.LocationType>;
 export type Location = z.infer<typeof schemas.Location>;
+export type Item = z.infer<typeof schemas.Item>;
 export type SexualContentLevel = z.infer<typeof schemas.SexualContentLevel>;
 export type ViolentContentLevel = z.infer<typeof schemas.ViolentContentLevel>;
 export type ActionEvent = z.infer<typeof schemas.ActionEvent>;
 export type NarrationEvent = z.infer<typeof schemas.NarrationEvent>;
 export type CharacterIntroductionEvent = z.infer<typeof schemas.CharacterIntroductionEvent>;
 export type LocationChangeEvent = z.infer<typeof schemas.LocationChangeEvent>;
+export type InventoryChangeEvent = z.infer<typeof schemas.InventoryChangeEvent>;
 export type Event = z.infer<typeof schemas.Event>;
 export type PromptConfig = z.infer<typeof schemas.PromptConfig>;
 export type State = z.infer<typeof schemas.State>;
@@ -46,6 +48,7 @@ export const initialState: State = schemas.State.parse({
     description: "[description]",
   },
   locations: [],
+  inventory: [],
   characters: [],
   protagonist: {
     name: "[name]",

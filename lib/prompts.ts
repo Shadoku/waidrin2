@@ -174,6 +174,19 @@ export function generateStartingCharactersPrompt(state: State): Prompt {
   return makePrompt(getStartingCharactersPromptText(state), getSystemPrompt(state));
 }
 
+export function checkInventoryChangePrompt(state: State): Prompt {
+  return makeMainPrompt(
+    `
+Determine if the protagonist (${state.protagonist.name}) gained or lost any items during the last narration.
+Return a JSON object with two arrays: "gained" and "lost".
+Each item should have a name and a short description (1-2 sentences).
+If nothing changed, return empty arrays.
+`,
+    state,
+    getPromptConfig(state),
+  );
+}
+
 function makeMainPromptPreamble(state: State, config: GenrePromptConfig): string {
   return formatTemplate(config.mainPromptPreamble, getTemplateVariables(state));
 }

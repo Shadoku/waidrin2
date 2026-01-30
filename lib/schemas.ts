@@ -61,6 +61,11 @@ export const Location = z.object({
   description: Description,
 });
 
+export const Item = z.object({
+  name: Name,
+  description: Description,
+});
+
 export const SexualContentLevel = z.enum(["regular", "explicit", "actively_explicit"]);
 
 export const ViolentContentLevel = z.enum(["regular", "graphic", "pervasive"]);
@@ -89,11 +94,18 @@ export const LocationChangeEvent = z.object({
   summary: Text.max(5000).optional(),
 });
 
+export const InventoryChangeEvent = z.object({
+  type: z.literal("inventory_change"),
+  gained: Item.array(),
+  lost: Item.array(),
+});
+
 export const Event = z.discriminatedUnion("type", [
   ActionEvent,
   NarrationEvent,
   CharacterIntroductionEvent,
   LocationChangeEvent,
+  InventoryChangeEvent,
 ]);
 
 export const StateBase = z.object({
@@ -120,6 +132,7 @@ export const StateBase = z.object({
   startingCharactersPromptOverride: PromptOverrideText,
   world: World,
   locations: Location.array(),
+  inventory: Item.array(),
   characters: Character.array(),
   protagonist: Character,
   hiddenDestiny: z.boolean(),
