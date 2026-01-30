@@ -254,7 +254,10 @@ export default function Chat() {
                       <Text weight="bold" mb="2" as="div">
                         Content
                       </Text>
-                      <SegmentedControl.Root value={settingsSection} onValueChange={setSettingsSection}>
+                      <SegmentedControl.Root
+                        value={settingsSection}
+                        onValueChange={(value) => setSettingsSection(value as "sexual" | "violence")}
+                      >
                         <SegmentedControl.Item value="sexual">Sexual</SegmentedControl.Item>
                         <SegmentedControl.Item value="violence">Violence</SegmentedControl.Item>
                       </SegmentedControl.Root>
