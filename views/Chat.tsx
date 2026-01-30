@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 // Copyright (C) 2025  Philipp Emanuel Weidmann <pew@worldwidemann.com>
 
-import { Box, Button, Flex, ScrollArea, Text } from "@radix-ui/themes";
+import { Box, Button, Flex, ScrollArea, SegmentedControl, Text } from "@radix-ui/themes";
 import { useEffect, useRef, useState } from "react";
 import { useShallow } from "zustand/shallow";
 import ActionChoice from "@/components/ActionChoice";
@@ -21,6 +21,7 @@ export default function Chat() {
   const [barTokenCount, setBarTokenCount] = useState(0);
   const [errorMessage, setErrorMessage] = useState("");
   const [activePane, setActivePane] = useState<InfoPane | null>(null);
+  const [settingsSection, setSettingsSection] = useState<"sexual" | "violence">("sexual");
 
   const doAction = async (action?: string) => {
     try {
@@ -250,12 +251,17 @@ export default function Chat() {
                       </Text>
                     </Box>
                     <Box className="border border-(--slate-6) rounded-[12px]" p="3">
-                      <Text weight="bold">Content</Text>
-                      <Text as="div" size="2" color="gray">
-                        Sexual: {sexualContentLevel}
+                      <Text weight="bold" mb="2" as="div">
+                        Content
                       </Text>
-                      <Text as="div" size="2" color="gray">
-                        Violence: {violentContentLevel}
+                      <SegmentedControl.Root value={settingsSection} onValueChange={setSettingsSection}>
+                        <SegmentedControl.Item value="sexual">Sexual</SegmentedControl.Item>
+                        <SegmentedControl.Item value="violence">Violence</SegmentedControl.Item>
+                      </SegmentedControl.Root>
+                      <Text as="div" size="2" color="gray" mt="2">
+                        {settingsSection === "sexual"
+                          ? `Level: ${sexualContentLevel}`
+                          : `Level: ${violentContentLevel}`}
                       </Text>
                     </Box>
                   </Flex>
