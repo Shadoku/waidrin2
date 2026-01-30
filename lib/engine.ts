@@ -7,6 +7,7 @@ import * as z from "zod/v4";
 import { getBackend } from "./backend";
 import {
   checkIfSameLocationPrompt,
+  checkInventoryChangePrompt,
   generateActionsPrompt,
   generateNewCharactersPrompt,
   generateNewLocationPrompt,
@@ -19,7 +20,15 @@ import {
   summarizeScenePrompt,
 } from "./prompts";
 import * as schemas from "./schemas";
-import { getState, initialState, type Location, type LocationChangeEvent, type NarrationEvent } from "./state";
+import {
+  getState,
+  initialState,
+  type InventoryChangeEvent,
+  type Item,
+  type Location,
+  type LocationChangeEvent,
+  type NarrationEvent,
+} from "./state";
 
 // When generating a character, the location isn't determined yet.
 const RawCharacter = schemas.Character.omit({ locationIndex: true });
@@ -117,6 +126,31 @@ export async function next(
       }
     };
 
+    const applyInventoryChange = async () => {
+      const inventorySchema = z.object({
+        gained: schemas.Item.array(),
+        lost: schemas.Item.array(),
+      });
+
+      const result = await backend.getObject(checkInventoryChangePrompt(state), inventorySchema, onToken);
+      if (result.gained.length === 0 && result.lost.length === 0) {
+        return;
+      }
+
+      const event: InventoryChangeEvent = {
+        type: "inventory_change",
+        gained: result.gained,
+        lost: result.lost,
+      };
+      state.events.push(event);
+
+      const removeNames = new Set(result.lost.map((item) => item.name.toLowerCase()));
+      state.inventory = state.inventory.filter((item) => !removeNames.has(item.name.toLowerCase()));
+      state.inventory.push(...result.gained);
+
+      updateState();
+    };
+
     try {
       // Validate state before processing to avoid wasting
       // time and tokens on requests for invalid states.
@@ -189,6 +223,7 @@ export async function next(
         }
 
         await narrate(action);
+        await applyInventoryChange();
 
         step = ["Checking for location change", "This typically takes a few seconds"];
         if (!(await getBoolean(checkIfSameLocationPrompt(state), onToken))) {
@@ -243,6 +278,7 @@ export async function next(
           }
 
           await narrate();
+          await applyInventoryChange();
         }
 
         step = ["Generating actions", "This typically takes a few seconds"];
@@ -322,8 +358,16 @@ function resetScenarioState(view: "character" | "scenario"): void {
     state.view = view;
     state.world = initialState.world;
     state.locations = [];
+    state.inventory = [];
     state.characters = [];
     state.protagonist = initialState.protagonist;
+    state.protagonistGuidance = initialState.protagonistGuidance;
+    state.startingLocationGuidance = initialState.startingLocationGuidance;
+    state.startingCharactersGuidance = initialState.startingCharactersGuidance;
+    state.systemPromptOverride = initialState.systemPromptOverride;
+    state.protagonistPromptOverride = initialState.protagonistPromptOverride;
+    state.startingLocationPromptOverride = initialState.startingLocationPromptOverride;
+    state.startingCharactersPromptOverride = initialState.startingCharactersPromptOverride;
     state.hiddenDestiny = initialState.hiddenDestiny;
     state.betrayal = initialState.betrayal;
     state.oppositeSexMagnet = initialState.oppositeSexMagnet;

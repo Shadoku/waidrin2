@@ -7,7 +7,7 @@ import type * as z from "zod/v4";
 import { create } from "zustand";
 import { persist } from "zustand/middleware";
 import { immer } from "zustand/middleware/immer";
-import { defaultCustomPrompts } from "./genres";
+import { defaultCustomPrompts, defaultLlmConfig } from "./llmConfig";
 import type { Backend } from "./backend";
 import * as schemas from "./schemas";
 
@@ -19,42 +19,36 @@ export type Race = z.infer<typeof schemas.Race>;
 export type Character = z.infer<typeof schemas.Character>;
 export type LocationType = z.infer<typeof schemas.LocationType>;
 export type Location = z.infer<typeof schemas.Location>;
+export type Item = z.infer<typeof schemas.Item>;
 export type SexualContentLevel = z.infer<typeof schemas.SexualContentLevel>;
 export type ViolentContentLevel = z.infer<typeof schemas.ViolentContentLevel>;
 export type ActionEvent = z.infer<typeof schemas.ActionEvent>;
 export type NarrationEvent = z.infer<typeof schemas.NarrationEvent>;
 export type CharacterIntroductionEvent = z.infer<typeof schemas.CharacterIntroductionEvent>;
 export type LocationChangeEvent = z.infer<typeof schemas.LocationChangeEvent>;
+export type InventoryChangeEvent = z.infer<typeof schemas.InventoryChangeEvent>;
 export type Event = z.infer<typeof schemas.Event>;
 export type PromptConfig = z.infer<typeof schemas.PromptConfig>;
 export type State = z.infer<typeof schemas.State>;
 
 export const initialState: State = schemas.State.parse({
-  apiUrl: "http://localhost:8080/v1/",
-  apiKey: "",
-  model: "",
-  contextLength: 16384,
-  inputLength: 16384,
-  generationParams: {
-    temperature: 0.5,
-  },
-  narrationParams: {
-    temperature: 0.6,
-    min_p: 0.03,
-    dry_multiplier: 0.8,
-  },
-  updateInterval: 200,
-  logPrompts: false,
-  logParams: false,
-  logResponses: false,
+  ...defaultLlmConfig,
   genre: "fantasy",
   view: "welcome",
   customPrompts: { ...defaultCustomPrompts },
+  protagonistGuidance: "",
+  startingLocationGuidance: "",
+  startingCharactersGuidance: "",
+  systemPromptOverride: "",
+  protagonistPromptOverride: "",
+  startingLocationPromptOverride: "",
+  startingCharactersPromptOverride: "",
   world: {
     name: "[name]",
     description: "[description]",
   },
   locations: [],
+  inventory: [],
   characters: [],
   protagonist: {
     name: "[name]",
@@ -142,6 +136,33 @@ export const useStateStore = create<StoredState>()(
     })),
     {
       name: "state",
+      version: 1,
+      migrate: (persistedState) => {
+        const baseDefaults = schemas.StateBase.parse(initialState);
+        const storedState = (persistedState ?? {}) as Partial<StoredState>;
+
+        const normalizeInventory = (inventory: unknown) =>
+          Array.isArray(inventory) ? (inventory as Item[]) : baseDefaults.inventory;
+
+        const normalizeHistoryEntry = (entry: unknown) => {
+          const historyEntry = (entry ?? {}) as Partial<State>;
+          return {
+            ...baseDefaults,
+            ...historyEntry,
+            inventory: normalizeInventory(historyEntry.inventory),
+          };
+        };
+
+        const history = Array.isArray(storedState.history)
+          ? storedState.history.map((entry) => normalizeHistoryEntry(entry))
+          : [];
+
+        return {
+          ...storedState,
+          inventory: normalizeInventory(storedState.inventory),
+          history,
+        } as StoredState;
+      },
       partialize: (state) => {
         // Don't persist functions and class instances.
         const persistedState: Partial<StoredState> = { ...state };

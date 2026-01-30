@@ -2,7 +2,7 @@
 // Copyright (C) 2025  Philipp Emanuel Weidmann <pew@worldwidemann.com>
 
 import { convertLocationChangeEventToText, getApproximateTokenCount, getContext } from "./context";
-import { genrePromptConfigs, type GenrePromptConfig } from "./genres";
+import { genrePromptConfigs, type GenrePromptConfig } from "./llmConfig";
 import * as schemas from "./schemas";
 import type { LocationChangeEvent, State } from "./state";
 
@@ -26,6 +26,41 @@ function makePrompt(userPrompt: string, systemPrompt: string): Prompt {
   };
 }
 
+export function generateCustomPromptConfigPrompt(description: string): Prompt {
+  const trimmed = description.trim();
+  return makePrompt(
+    `
+You are a prompt engineer for a text-based role-playing game. Create a complete set of prompt templates
+for a custom genre described below. Return a JSON object that matches this shape exactly:
+{
+  "systemPrompt": string,
+  "worldPrompt": string,
+  "protagonistPrompt": string,
+  "startingLocationPrompt": string,
+  "startingCharactersPrompt": string,
+  "mainPromptPreamble": string,
+  "narrationPrompt": string,
+  "actionsPrompt": string,
+  "checkLocationPrompt": string,
+  "newLocationPrompt": string,
+  "newCharactersPrompt": string,
+  "summarizePrompt": string
+}
+
+Guidelines:
+- Use plain text with clear instructions suitable for LLM prompting.
+- Preserve these template variables where they make sense: {{worldName}}, {{worldDescription}}, {{protagonistName}},
+  {{protagonistGender}}, {{protagonistRace}}, {{protagonistBiography}}, {{locationName}}, {{locationDescription}},
+  {{locationTypes}}, {{actionLine}}, {{accompanyingCharactersLine}}, {{sceneContext}}, {{sceneText}}.
+- Keep prompts concise and focused on the described genre.
+
+Genre description:
+${trimmed}
+`,
+    "You are a meticulous prompt engineer who returns only valid JSON for structured prompt templates.",
+  );
+}
+
 function getPromptConfig(state: State): GenrePromptConfig {
   if (state.genre === "custom") {
     return state.customPrompts;
@@ -36,6 +71,28 @@ function getPromptConfig(state: State): GenrePromptConfig {
 
 function formatTemplate(template: string, variables: Record<string, string>): string {
   return template.replaceAll(/\{\{(\w+)\}\}/g, (_match, key) => variables[key] ?? "");
+}
+
+export function getSystemPrompt(state: State): string {
+  const override = state.systemPromptOverride?.trim();
+  if (override) {
+    return override;
+  }
+
+  return getPromptConfig(state).systemPrompt;
+}
+
+function appendGuidance(promptText: string, guidance?: string): string {
+  if (!guidance) {
+    return promptText;
+  }
+
+  const trimmed = guidance.trim();
+  if (!trimmed) {
+    return promptText;
+  }
+
+  return `${promptText}\n\nAdditional guidance: ${trimmed}`;
 }
 
 function getTemplateVariables(state: State, extra: Record<string, string> = {}): Record<string, string> {
@@ -57,32 +114,76 @@ function getTemplateVariables(state: State, extra: Record<string, string> = {}):
 
 export function generateWorldPrompt(state: State): Prompt {
   const config = getPromptConfig(state);
-  return makePrompt(formatTemplate(config.worldPrompt, getTemplateVariables(state)), config.systemPrompt);
+  return makePrompt(formatTemplate(config.worldPrompt, getTemplateVariables(state)), getSystemPrompt(state));
+}
+
+export function getProtagonistPromptText(state: State): string {
+  const override = state.protagonistPromptOverride?.trim();
+  if (override) {
+    return override;
+  }
+
+  const config = getPromptConfig(state);
+  return appendGuidance(
+    formatTemplate(config.protagonistPrompt, getTemplateVariables(state)),
+    state.protagonistGuidance,
+  );
 }
 
 export function generateProtagonistPrompt(state: State): Prompt {
+  return makePrompt(getProtagonistPromptText(state), getSystemPrompt(state));
+}
+
+export function getStartingLocationPromptText(state: State): string {
+  const override = state.startingLocationPromptOverride?.trim();
+  if (override) {
+    return override;
+  }
+
   const config = getPromptConfig(state);
-  return makePrompt(formatTemplate(config.protagonistPrompt, getTemplateVariables(state)), config.systemPrompt);
+  const promptText = formatTemplate(config.startingLocationPrompt, getTemplateVariables(state));
+  return state.genre === "custom" ? promptText : appendGuidance(promptText, state.startingLocationGuidance);
 }
 
 export function generateStartingLocationPrompt(state: State): Prompt {
+  return makePrompt(getStartingLocationPromptText(state), getSystemPrompt(state));
+}
+
+export function getStartingCharactersPromptText(state: State): string {
+  const override = state.startingCharactersPromptOverride?.trim();
+  if (override) {
+    return override;
+  }
+
   const config = getPromptConfig(state);
-  return makePrompt(formatTemplate(config.startingLocationPrompt, getTemplateVariables(state)), config.systemPrompt);
+  const location = state.locations[state.protagonist.locationIndex];
+  const locationName = location?.name ?? "[location]";
+  const locationDescription = location?.description ?? "";
+
+  const promptText = formatTemplate(
+    config.startingCharactersPrompt,
+    getTemplateVariables(state, {
+      locationName,
+      locationDescription,
+    }),
+  );
+  return state.genre === "custom" ? promptText : appendGuidance(promptText, state.startingCharactersGuidance);
 }
 
 export function generateStartingCharactersPrompt(state: State): Prompt {
-  const config = getPromptConfig(state);
-  const location = state.locations[state.protagonist.locationIndex];
+  return makePrompt(getStartingCharactersPromptText(state), getSystemPrompt(state));
+}
 
-  return makePrompt(
-    formatTemplate(
-      config.startingCharactersPrompt,
-      getTemplateVariables(state, {
-        locationName: location.name,
-        locationDescription: location.description,
-      }),
-    ),
-    config.systemPrompt,
+export function checkInventoryChangePrompt(state: State): Prompt {
+  return makeMainPrompt(
+    `
+Determine if the protagonist (${state.protagonist.name}) gained or lost any items during the last narration.
+Return a JSON object with two arrays: "gained" and "lost".
+Each item should have a name and a short description (1-2 sentences).
+If nothing changed, return empty arrays.
+`,
+    state,
+    getPromptConfig(state),
   );
 }
 
@@ -112,7 +213,7 @@ ${context}
 
 ${normalizedPrompt}
 `,
-    config.systemPrompt,
+    getSystemPrompt(state),
   );
 }
 
@@ -209,5 +310,5 @@ export function summarizeScenePrompt(state: State): Prompt {
     }),
   );
 
-  return makePrompt(userPrompt, config.systemPrompt);
+  return makePrompt(userPrompt, getSystemPrompt(state));
 }

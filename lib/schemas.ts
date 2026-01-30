@@ -34,6 +34,8 @@ export const PromptConfig = z.object({
   summarizePrompt: PromptText,
 });
 
+export const PromptOverrideText = z.string().trim().max(10000);
+
 export const World = z.object({
   name: Name,
   description: Description,
@@ -56,6 +58,11 @@ export const LocationType = z.enum(["tavern", "market", "road"]);
 export const Location = z.object({
   name: Name,
   type: LocationType,
+  description: Description,
+});
+
+export const Item = z.object({
+  name: Name,
   description: Description,
 });
 
@@ -87,11 +94,18 @@ export const LocationChangeEvent = z.object({
   summary: Text.max(5000).optional(),
 });
 
+export const InventoryChangeEvent = z.object({
+  type: z.literal("inventory_change"),
+  gained: Item.array(),
+  lost: Item.array(),
+});
+
 export const Event = z.discriminatedUnion("type", [
   ActionEvent,
   NarrationEvent,
   CharacterIntroductionEvent,
   LocationChangeEvent,
+  InventoryChangeEvent,
 ]);
 
 export const StateBase = z.object({
@@ -109,8 +123,16 @@ export const StateBase = z.object({
   genre: Genre,
   view: View,
   customPrompts: PromptConfig,
+  protagonistGuidance: z.string().trim().max(500),
+  startingLocationGuidance: z.string().trim().max(500),
+  startingCharactersGuidance: z.string().trim().max(500),
+  systemPromptOverride: PromptOverrideText,
+  protagonistPromptOverride: PromptOverrideText,
+  startingLocationPromptOverride: PromptOverrideText,
+  startingCharactersPromptOverride: PromptOverrideText,
   world: World,
   locations: Location.array(),
+  inventory: Item.array(),
   characters: Character.array(),
   protagonist: Character,
   hiddenDestiny: z.boolean(),

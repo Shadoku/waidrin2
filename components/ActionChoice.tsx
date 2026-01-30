@@ -18,6 +18,7 @@ type ActionChoiceProps = {
 
 export default function ActionChoice({ onAction, onUndo, onRegenerate, canUndo, canRegenerate }: ActionChoiceProps) {
   const [customAction, setCustomAction] = useState("");
+  const [actionsVisible, setActionsVisible] = useState(true);
 
   const { protagonist, actions } = useStateStore(
     useShallow((state) => ({
@@ -45,23 +46,36 @@ export default function ActionChoice({ onAction, onUndo, onRegenerate, canUndo, 
         ) do next?
       </Text>
 
-      {actions.map((action, index) => (
-        <Button
-          // biome-ignore lint/suspicious/noArrayIndexKey: Actions are immutable, so this is valid.
-          key={index}
-          className="h-auto justify-start text-start py-[0.5em]"
-          variant="surface"
-          radius="large"
-          color="sky"
-          size="3"
-          onClick={() => {
-            onAction(action);
-            setCustomAction("");
-          }}
-        >
-          <Text size="5">{action}</Text>
+      <Flex justify="between" align="center">
+        <Text size="4" color="gray">
+          Suggested actions
+        </Text>
+        <Button variant="ghost" size="2" color="gray" onClick={() => setActionsVisible(!actionsVisible)}>
+          {actionsVisible ? "Hide" : "Show"}
         </Button>
-      ))}
+      </Flex>
+
+      {actionsVisible && (
+        <Flex direction="column" gap="2">
+          {actions.map((action, index) => (
+            <Button
+              // biome-ignore lint/suspicious/noArrayIndexKey: Actions are immutable, so this is valid.
+              key={index}
+              className="h-auto justify-start text-start py-[0.35em]"
+              variant="surface"
+              radius="medium"
+              color="sky"
+              size="2"
+              onClick={() => {
+                onAction(action);
+                setCustomAction("");
+              }}
+            >
+              <Text size="4">{action}</Text>
+            </Button>
+          ))}
+        </Flex>
+      )}
 
       <TextField.Root
         value={customAction}

@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 // Copyright (C) 2025  bubbltaco
 
-import type { LocationChangeEvent, NarrationEvent, State } from "./state";
+import type { InventoryChangeEvent, LocationChangeEvent, NarrationEvent, State } from "./state";
 
 // Type that represents each scene in context
 interface Scene {
@@ -22,7 +22,9 @@ interface Scene {
 export function getContext(state: State, tokenBudget: number): string {
   // we filter down to only narration and location change events,
   // because the other event types like character_introduction are implied in the narration
-  const events = state.events.filter((event) => event.type === "narration" || event.type === "location_change");
+  const events = state.events.filter(
+    (event) => event.type === "narration" || event.type === "location_change" || event.type === "inventory_change",
+  );
 
   if (events.length === 0) {
     return "";
@@ -58,7 +60,7 @@ export function getContext(state: State, tokenBudget: number): string {
  * @param state current state
  * @returns
  */
-function createInitialContext(events: (NarrationEvent | LocationChangeEvent)[], state: State): Scene[] {
+function createInitialContext(events: (NarrationEvent | LocationChangeEvent | InventoryChangeEvent)[], state: State): Scene[] {
   const scenes: Scene[] = [];
 
   if (events.length === 0) {
@@ -66,7 +68,7 @@ function createInitialContext(events: (NarrationEvent | LocationChangeEvent)[], 
   }
 
   // We go through all the events, as we encounter location changes, we create a new scene
-  let currentSceneEvents: (NarrationEvent | LocationChangeEvent)[] = [];
+  let currentSceneEvents: (NarrationEvent | LocationChangeEvent | InventoryChangeEvent)[] = [];
   for (let i = 0; i < events.length; i++) {
     const event = events[i];
     if (event.type === "location_change") {
@@ -82,7 +84,7 @@ function createInitialContext(events: (NarrationEvent | LocationChangeEvent)[], 
 
       // Start a new scene with this location change
       currentSceneEvents = [event];
-    } else if (event.type === "narration") {
+    } else if (event.type === "narration" || event.type === "inventory_change") {
       // Add narration events to the current scene
       currentSceneEvents.push(event);
     }
@@ -107,7 +109,10 @@ function createInitialContext(events: (NarrationEvent | LocationChangeEvent)[], 
  * @param state The current state
  * @returns The text representation of the scene
  */
-function createSceneText(events: (NarrationEvent | LocationChangeEvent)[], state: State): string {
+function createSceneText(
+  events: (NarrationEvent | LocationChangeEvent | InventoryChangeEvent)[],
+  state: State,
+): string {
   const sceneParts: string[] = [];
 
   for (const event of events) {
@@ -115,6 +120,8 @@ function createSceneText(events: (NarrationEvent | LocationChangeEvent)[], state
       sceneParts.push(convertLocationChangeEventToText(event, state));
     } else if (event.type === "narration") {
       sceneParts.push(event.text);
+    } else if (event.type === "inventory_change") {
+      sceneParts.push(convertInventoryChangeEventToText(event));
     }
   }
 
@@ -203,6 +210,21 @@ ${state.protagonist.name} is entering ${location.name}. ${location.description}
 The following characters are present at ${location.name}:
 
 ${cast}
+
+-----`;
+}
+
+export function convertInventoryChangeEventToText(event: InventoryChangeEvent): string {
+  const gained = event.gained.map((item) => `+ ${item.name}: ${item.description}`).join("\n");
+  const lost = event.lost.map((item) => `- ${item.name}: ${item.description}`).join("\n");
+
+  return `-----
+
+INVENTORY UPDATE
+
+${gained || "No items gained."}
+
+${lost || "No items lost."}
 
 -----`;
 }

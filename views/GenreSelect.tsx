@@ -1,21 +1,108 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 // Copyright (C) 2025  Philipp Emanuel Weidmann <pew@worldwidemann.com>
 
-import { Box, Heading, RadioCards, Text, TextArea } from "@radix-ui/themes";
+import { Box, Button, Dialog, Flex, Heading, RadioCards, Text, TextArea } from "@radix-ui/themes";
 import { Label } from "radix-ui";
+import { useMemo, useState } from "react";
 import { useShallow } from "zustand/shallow";
 import ImageOption from "@/components/ImageOption";
 import WizardStep from "@/components/WizardStep";
+import { getBackend } from "@/lib/backend";
+import {
+  generateCustomPromptConfigPrompt,
+  getStartingCharactersPromptText,
+  getStartingLocationPromptText,
+  getSystemPrompt,
+} from "@/lib/prompts";
+import * as schemas from "@/lib/schemas";
 import { useStateStore } from "@/lib/state";
 
 export default function GenreSelect({ onNext, onBack }: { onNext?: () => void; onBack?: () => void }) {
-  const { genre, customPrompts, setState } = useStateStore(
+  const {
+    genre,
+    customPrompts,
+    startingLocationGuidance,
+    startingCharactersGuidance,
+    systemPromptOverride,
+    startingLocationPromptOverride,
+    startingCharactersPromptOverride,
+    setState,
+    fullState,
+  } = useStateStore(
     useShallow((state) => ({
       genre: state.genre,
       customPrompts: state.customPrompts,
+      startingLocationGuidance: state.startingLocationGuidance,
+      startingCharactersGuidance: state.startingCharactersGuidance,
+      systemPromptOverride: state.systemPromptOverride,
+      startingLocationPromptOverride: state.startingLocationPromptOverride,
+      startingCharactersPromptOverride: state.startingCharactersPromptOverride,
       setState: state.set,
+      fullState: state,
     })),
   );
+
+  const [reviewOpen, setReviewOpen] = useState(false);
+  const [systemPromptDraft, setSystemPromptDraft] = useState("");
+  const [startingLocationDraft, setStartingLocationDraft] = useState("");
+  const [startingCharactersDraft, setStartingCharactersDraft] = useState("");
+  const [customPromptDescription, setCustomPromptDescription] = useState("");
+  const [customPromptError, setCustomPromptError] = useState("");
+  const [customPromptGenerating, setCustomPromptGenerating] = useState(false);
+
+  const effectiveSystemPrompt = useMemo(() => getSystemPrompt(fullState), [fullState]);
+  const effectiveStartingLocation = useMemo(() => getStartingLocationPromptText(fullState), [fullState]);
+  const effectiveStartingCharacters = useMemo(() => getStartingCharactersPromptText(fullState), [fullState]);
+
+  const openReview = () => {
+    setSystemPromptDraft(systemPromptOverride.trim() || effectiveSystemPrompt);
+    setStartingLocationDraft(startingLocationPromptOverride.trim() || effectiveStartingLocation);
+    setStartingCharactersDraft(startingCharactersPromptOverride.trim() || effectiveStartingCharacters);
+    setReviewOpen(true);
+  };
+
+  const generateCustomPrompts = async () => {
+    if (!customPromptDescription.trim()) {
+      setCustomPromptError("Add a short description before generating prompts.");
+      return;
+    }
+
+    if (!fullState.model.trim()) {
+      setCustomPromptError("Select a model in the connection setup before generating prompts.");
+      return;
+    }
+
+    setCustomPromptError("");
+    setCustomPromptGenerating(true);
+
+    try {
+      const prompt = generateCustomPromptConfigPrompt(customPromptDescription);
+      const response = await getBackend().getNarration(prompt);
+      let parsed: unknown;
+
+      try {
+        parsed = JSON.parse(response);
+      } catch {
+        const start = response.indexOf("{");
+        const end = response.lastIndexOf("}");
+        if (start >= 0 && end > start) {
+          parsed = JSON.parse(response.slice(start, end + 1));
+        } else {
+          throw new Error("The model did not return valid JSON.");
+        }
+      }
+
+      const generated = schemas.PromptConfig.parse(parsed);
+      setState((state) => {
+        state.customPrompts = generated;
+      });
+    } catch (error) {
+      const message = error instanceof Error ? error.message : String(error);
+      setCustomPromptError(message || "Unable to generate prompts.");
+    } finally {
+      setCustomPromptGenerating(false);
+    }
+  };
 
   const promptFields: Array<{ key: keyof typeof customPrompts; label: string; description?: string }> = [
     { key: "systemPrompt", label: "System prompt" },
@@ -32,8 +119,18 @@ export default function GenreSelect({ onNext, onBack }: { onNext?: () => void; o
     { key: "summarizePrompt", label: "Summarize prompt" },
   ];
 
+  const handleNext = onNext
+    ? () => {
+        if (genre === "custom") {
+          onNext();
+          return;
+        }
+        openReview();
+      }
+    : undefined;
+
   return (
-    <WizardStep title="Genre" onNext={onNext} onBack={onBack}>
+    <WizardStep title="Genre" onNext={handleNext} onBack={onBack}>
       <RadioCards.Root
         value={genre}
         onValueChange={(value) =>
@@ -48,6 +145,53 @@ export default function GenreSelect({ onNext, onBack }: { onNext?: () => void; o
         <ImageOption title="Reality" description="Dust and grime" image="reality" value="reality" />
         <ImageOption title="Custom" description="Bring your own prompts" image="fantasy" value="custom" />
       </RadioCards.Root>
+
+      {genre !== "custom" && (
+        <Box mt="6">
+          <Heading size="6" color="gold" mb="3">
+            Optional helpers
+          </Heading>
+          <Text size="4" color="gray" as="div" mb="4">
+            These helper notes are appended to the base prompts to guide the generator for this genre.
+          </Text>
+          <Box className="grid gap-4">
+            <Label.Root>
+              <Text size="5" color="cyan">
+                Starting location helper
+              </Text>
+              <TextArea
+                value={startingLocationGuidance}
+                onChange={(event) =>
+                  setState((state) => {
+                    state.startingLocationGuidance = event.target.value;
+                  })
+                }
+                className="mt-2 [&_textarea]:text-(length:--font-size-4)"
+                size="3"
+                resize="vertical"
+                placeholder="Add extra details or constraints for the first location..."
+              />
+            </Label.Root>
+            <Label.Root>
+              <Text size="5" color="cyan">
+                Starting characters helper
+              </Text>
+              <TextArea
+                value={startingCharactersGuidance}
+                onChange={(event) =>
+                  setState((state) => {
+                    state.startingCharactersGuidance = event.target.value;
+                  })
+                }
+                className="mt-2 [&_textarea]:text-(length:--font-size-4)"
+                size="3"
+                resize="vertical"
+                placeholder="Add guidance for the first set of NPCs or companions..."
+              />
+            </Label.Root>
+          </Box>
+        </Box>
+      )}
 
       {genre === "custom" && (
         <Box mt="6">
@@ -64,6 +208,32 @@ export default function GenreSelect({ onNext, onBack }: { onNext?: () => void; o
             <code>{"{{accompanyingCharactersLine}}"}</code>, <code>{"{{sceneContext}}"}</code>, and{" "}
             <code>{"{{sceneText}}"}</code>.
           </Text>
+
+          <Box className="grid gap-4" mb="5">
+            <Label.Root>
+              <Text size="5" color="cyan">
+                Generate prompts from a description
+              </Text>
+              <TextArea
+                value={customPromptDescription}
+                onChange={(event) => setCustomPromptDescription(event.target.value)}
+                className="mt-2 [&_textarea]:text-(length:--font-size-4)"
+                size="3"
+                resize="vertical"
+                placeholder="Describe the genre, tone, and key themes for the prompts..."
+              />
+            </Label.Root>
+            <Flex gap="3" align="center">
+              <Button onClick={generateCustomPrompts} disabled={customPromptGenerating}>
+                {customPromptGenerating ? "Generating..." : "Generate prompts"}
+              </Button>
+              {customPromptError && (
+                <Text size="4" color="red">
+                  {customPromptError}
+                </Text>
+              )}
+            </Flex>
+          </Box>
 
           <Box className="grid gap-4">
             {promptFields.map((field) => (
@@ -86,6 +256,77 @@ export default function GenreSelect({ onNext, onBack }: { onNext?: () => void; o
             ))}
           </Box>
         </Box>
+      )}
+
+      {onNext && genre !== "custom" && (
+        <Dialog.Root open={reviewOpen} onOpenChange={setReviewOpen}>
+          <Dialog.Content maxWidth="50rem">
+            <Dialog.Title className="lowercase" size="7">
+              Review genre prompts
+            </Dialog.Title>
+            <Dialog.Description size="4" color="gray" mb="4">
+              Review and edit the final prompts before they are sent to the model.
+            </Dialog.Description>
+
+            <Flex direction="column" gap="4">
+              <Label.Root>
+                <Text size="5" color="cyan">
+                  System prompt
+                </Text>
+                <TextArea
+                  value={systemPromptDraft}
+                  onChange={(event) => setSystemPromptDraft(event.target.value)}
+                  className="mt-2 [&_textarea]:text-(length:--font-size-4)"
+                  size="3"
+                  resize="vertical"
+                />
+              </Label.Root>
+              <Label.Root>
+                <Text size="5" color="cyan">
+                  Starting location prompt
+                </Text>
+                <TextArea
+                  value={startingLocationDraft}
+                  onChange={(event) => setStartingLocationDraft(event.target.value)}
+                  className="mt-2 [&_textarea]:text-(length:--font-size-4)"
+                  size="3"
+                  resize="vertical"
+                />
+              </Label.Root>
+              <Label.Root>
+                <Text size="5" color="cyan">
+                  Starting characters prompt
+                </Text>
+                <TextArea
+                  value={startingCharactersDraft}
+                  onChange={(event) => setStartingCharactersDraft(event.target.value)}
+                  className="mt-2 [&_textarea]:text-(length:--font-size-4)"
+                  size="3"
+                  resize="vertical"
+                />
+              </Label.Root>
+            </Flex>
+
+            <Flex justify="end" gap="3" mt="5">
+              <Button variant="ghost" color="gray" onClick={() => setReviewOpen(false)}>
+                Cancel
+              </Button>
+              <Button
+                onClick={() => {
+                  setState((state) => {
+                    state.systemPromptOverride = systemPromptDraft.trim();
+                    state.startingLocationPromptOverride = startingLocationDraft.trim();
+                    state.startingCharactersPromptOverride = startingCharactersDraft.trim();
+                  });
+                  setReviewOpen(false);
+                  onNext();
+                }}
+              >
+                Continue
+              </Button>
+            </Flex>
+          </Dialog.Content>
+        </Dialog.Root>
       )}
     </WizardStep>
   );

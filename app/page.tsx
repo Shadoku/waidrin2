@@ -8,7 +8,6 @@ import { current } from "immer";
 import { useEffect, useState } from "react";
 import { useShallow } from "zustand/shallow";
 import ErrorPopup from "@/components/ErrorPopup";
-import MainMenu from "@/components/MainMenu";
 import ProcessingOverlay from "@/components/ProcessingOverlay";
 import StateDebugger from "@/components/StateDebugger";
 import { abort, back, isAbortError, next } from "@/lib/engine";
@@ -177,7 +176,6 @@ export default function Home() {
           {view === "scenario" && <ScenarioSetup onNext={nextView} onBack={back} />}
           {view === "chat" && <Chat />}
 
-          <MainMenu />
           <StateDebugger />
         </>
       )}
