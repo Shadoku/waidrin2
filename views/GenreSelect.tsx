@@ -67,12 +67,32 @@ export default function GenreSelect({ onNext, onBack }: { onNext?: () => void; o
       return;
     }
 
+    if (!fullState.model.trim()) {
+      setCustomPromptError("Select a model in the connection setup before generating prompts.");
+      return;
+    }
+
     setCustomPromptError("");
     setCustomPromptGenerating(true);
 
     try {
       const prompt = generateCustomPromptConfigPrompt(customPromptDescription);
-      const generated = await getBackend().getObject(prompt, schemas.PromptConfig);
+      const response = await getBackend().getNarration(prompt);
+      let parsed: unknown;
+
+      try {
+        parsed = JSON.parse(response);
+      } catch {
+        const start = response.indexOf("{");
+        const end = response.lastIndexOf("}");
+        if (start >= 0 && end > start) {
+          parsed = JSON.parse(response.slice(start, end + 1));
+        } else {
+          throw new Error("The model did not return valid JSON.");
+        }
+      }
+
+      const generated = schemas.PromptConfig.parse(parsed);
       setState((state) => {
         state.customPrompts = generated;
       });
