@@ -9,7 +9,7 @@ import ErrorBar from "@/components/ErrorBar";
 import EventView from "@/components/EventView";
 import ProcessingBar from "@/components/ProcessingBar";
 import CharacterView from "@/components/CharacterView";
-import { abort, isAbortError, next, regenerate, undo } from "@/lib/engine";
+import { abort, isAbortError, newCharacter, newScenario, next, regenerate, reset, undo } from "@/lib/engine";
 import { useStateStore } from "@/lib/state";
 
 type InfoPane = "player" | "party" | "location" | "inventory" | "options";
@@ -108,9 +108,9 @@ export default function Chat() {
   const paneWidth = "22rem";
 
   return (
-    <Flex width="100%" justify="center">
+    <Flex width="100%" justify="end" className="pr-4">
       <Box
-        className="w-full max-w-[90rem] grid transition-[grid-template-columns] duration-300 ease-in-out"
+        className="w-full max-w-[90rem] grid transition-[grid-template-columns] duration-300 ease-in-out ml-auto"
         style={{
           gridTemplateColumns: isPaneOpen ? `${paneWidth} minmax(0, 1fr)` : `0 minmax(0, 1fr)`,
         }}
@@ -134,8 +134,8 @@ export default function Chat() {
               Close
             </Button>
           </Flex>
-          <ScrollArea className="flex-1" type="auto">
-            <Box p="4">
+          <ScrollArea className="flex-1 overflow-x-hidden" type="auto">
+            <Box p="4" className="break-words">
               {activePane === "player" && <CharacterView character={protagonist} />}
 
               {activePane === "party" && (
@@ -179,18 +179,18 @@ export default function Chat() {
                 </Flex>
               )}
 
-              {activePane === "options" && (
-                <Flex direction="column" gap="3">
-                  <Box className="border border-(--slate-6) rounded-[12px]" p="3">
-                    <Text weight="bold">Genre</Text>
+                {activePane === "options" && (
+                  <Flex direction="column" gap="3">
+                    <Box className="border border-(--slate-6) rounded-[12px]" p="3">
+                      <Text weight="bold">Genre</Text>
                     <Text as="div" size="2" color="gray">
                       {genre}
                     </Text>
                   </Box>
-                  <Box className="border border-(--slate-6) rounded-[12px]" p="3">
-                    <Text weight="bold" mb="2" as="div">
-                      Content
-                    </Text>
+                    <Box className="border border-(--slate-6) rounded-[12px]" p="3">
+                      <Text weight="bold" mb="2" as="div">
+                        Content
+                      </Text>
                     <SegmentedControl.Root
                       value={settingsSection}
                       onValueChange={(value) => setSettingsSection(value as "sexual" | "violence")}
@@ -198,14 +198,39 @@ export default function Chat() {
                       <SegmentedControl.Item value="sexual">Sexual</SegmentedControl.Item>
                       <SegmentedControl.Item value="violence">Violence</SegmentedControl.Item>
                     </SegmentedControl.Root>
-                    <Text as="div" size="2" color="gray" mt="2">
-                      {settingsSection === "sexual"
-                        ? `Level: ${sexualContentLevel}`
-                        : `Level: ${violentContentLevel}`}
-                    </Text>
-                  </Box>
-                </Flex>
-              )}
+                      <Text as="div" size="2" color="gray" mt="2">
+                        {settingsSection === "sexual"
+                          ? `Level: ${sexualContentLevel}`
+                          : `Level: ${violentContentLevel}`}
+                      </Text>
+                    </Box>
+                    <Box className="border border-(--slate-6) rounded-[12px]" p="3">
+                      <Text weight="bold" mb="2" as="div">
+                        Session
+                      </Text>
+                      <Flex direction="column" gap="2">
+                        <Button variant="soft" color="gold" onClick={newCharacter}>
+                          New character (keeps connection settings)
+                        </Button>
+                        <Button variant="soft" color="gold" onClick={newScenario}>
+                          New scenario (keeps connection settings)
+                        </Button>
+                        <Button variant="soft" color="red" onClick={reset}>
+                          Reset state (wipes all progress)
+                        </Button>
+                        <Button
+                          variant="soft"
+                          color="gray"
+                          onClick={() =>
+                            window.open("https://github.com/p-e-w/waidrin/issues", "_blank", "noopener,noreferrer")
+                          }
+                        >
+                          Report an issue...
+                        </Button>
+                      </Flex>
+                    </Box>
+                  </Flex>
+                )}
             </Box>
           </ScrollArea>
         </Flex>
