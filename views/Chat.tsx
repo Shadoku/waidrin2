@@ -22,6 +22,7 @@ export default function Chat() {
   const [errorMessage, setErrorMessage] = useState("");
   const [activePane, setActivePane] = useState<InfoPane | null>(null);
   const [settingsSection, setSettingsSection] = useState<"sexual" | "violence">("sexual");
+  const [paneSide, setPaneSide] = useState<"right" | "left">("right");
 
   const doAction = async (action?: string) => {
     try {
@@ -114,10 +115,143 @@ export default function Chat() {
         <Box
           className="w-full grid transition-[grid-template-columns] duration-300 ease-in-out"
           style={{
-            gridTemplateColumns: `minmax(0, 1fr) minmax(0, ${chatMaxWidth}) minmax(${paneMinWidth}, 1fr)`,
+            gridTemplateColumns:
+              paneSide === "right"
+                ? `minmax(0, 1fr) minmax(0, ${chatMaxWidth}) minmax(${paneMinWidth}, 1fr)`
+                : `minmax(${paneMinWidth}, 1fr) minmax(0, ${chatMaxWidth}) minmax(0, 1fr)`,
           }}
         >
-          <Box />
+          {paneSide === "left" ? (
+            <Flex
+              className="bg-(--slate-1) border border-(--gold-10) shadow-[0_0_20px_var(--slate-9)] overflow-hidden"
+              direction="column"
+              height="100vh"
+            >
+              <Flex align="center" justify="between" className="border-b border-(--gold-9)" p="4">
+                <Text size="5" weight="bold">
+                  {activePane === "player" && "Player character"}
+                  {activePane === "party" && "Party"}
+                  {activePane === "location" && "Location"}
+                  {activePane === "inventory" && "Inventory"}
+                  {activePane === "options" && "Options"}
+                </Text>
+                <Button variant="ghost" color="gold" onClick={() => setActivePane(null)}>
+                  Close
+                </Button>
+              </Flex>
+              <ScrollArea className="flex-1 overflow-x-hidden" type="auto">
+                <Box p="4" className="break-words">
+                  {activePane === "player" && <CharacterView character={protagonist} />}
+
+                  {activePane === "party" && (
+                    <Flex direction="column" gap="4">
+                      {partyMembers.length === 0 && <Text color="gray">No party members yet.</Text>}
+                      {partyMembers.map((member) => (
+                        <CharacterView key={`${member.name}-${member.locationIndex}`} character={member} />
+                      ))}
+                    </Flex>
+                  )}
+
+                  {activePane === "location" && (
+                    <Flex direction="column" gap="3">
+                      {currentLocation ? (
+                        <>
+                          <Text size="5" weight="bold">
+                            {currentLocation.name}
+                          </Text>
+                          <Text size="2" color="gray">
+                            {currentLocation.type}
+                          </Text>
+                          <Text>{currentLocation.description}</Text>
+                        </>
+                      ) : (
+                        <Text color="gray">No location yet.</Text>
+                      )}
+                    </Flex>
+                  )}
+
+                  {activePane === "inventory" && (
+                    <Flex direction="column" gap="3">
+                      {inventory.length === 0 && <Text color="gray">Inventory is empty.</Text>}
+                      {inventory.map((item) => (
+                        <Box key={item.name} className="border border-(--slate-6) rounded-[12px]" p="3">
+                          <Text weight="bold">{item.name}</Text>
+                          <Text as="div" size="2" color="gray">
+                            {item.description}
+                          </Text>
+                        </Box>
+                      ))}
+                    </Flex>
+                  )}
+
+                  {activePane === "options" && (
+                    <Flex direction="column" gap="3">
+                      <Box className="border border-(--slate-6) rounded-[12px]" p="3">
+                        <Text weight="bold">Genre</Text>
+                        <Text as="div" size="2" color="gray">
+                          {genre}
+                        </Text>
+                      </Box>
+                      <Box className="border border-(--slate-6) rounded-[12px]" p="3">
+                        <Text weight="bold" mb="2" as="div">
+                          Content
+                        </Text>
+                        <SegmentedControl.Root
+                          value={settingsSection}
+                          onValueChange={(value) => setSettingsSection(value as "sexual" | "violence")}
+                        >
+                          <SegmentedControl.Item value="sexual">Sexual</SegmentedControl.Item>
+                          <SegmentedControl.Item value="violence">Violence</SegmentedControl.Item>
+                        </SegmentedControl.Root>
+                        <Text as="div" size="2" color="gray" mt="2">
+                          {settingsSection === "sexual"
+                            ? `Level: ${sexualContentLevel}`
+                            : `Level: ${violentContentLevel}`}
+                        </Text>
+                      </Box>
+                      <Box className="border border-(--slate-6) rounded-[12px]" p="3">
+                        <Text weight="bold" mb="2" as="div">
+                          Pane position
+                        </Text>
+                        <SegmentedControl.Root
+                          value={paneSide}
+                          onValueChange={(value) => setPaneSide(value as "right" | "left")}
+                        >
+                          <SegmentedControl.Item value="left">Left</SegmentedControl.Item>
+                          <SegmentedControl.Item value="right">Right</SegmentedControl.Item>
+                        </SegmentedControl.Root>
+                      </Box>
+                      <Box className="border border-(--slate-6) rounded-[12px]" p="3">
+                        <Text weight="bold" mb="2" as="div">
+                          Session
+                        </Text>
+                        <Flex direction="column" gap="2">
+                          <Button variant="soft" color="gold" onClick={newCharacter}>
+                            New character (keeps connection settings)
+                          </Button>
+                          <Button variant="soft" color="gold" onClick={newScenario}>
+                            New scenario (keeps connection settings)
+                          </Button>
+                          <Button variant="soft" color="red" onClick={reset}>
+                            Reset state (wipes all progress)
+                          </Button>
+                          <Button
+                            variant="soft"
+                            color="gray"
+                            onClick={() =>
+                              window.open("https://github.com/p-e-w/waidrin/issues", "_blank", "noopener,noreferrer")
+                            }
+                          >
+                            Report an issue...
+                          </Button>
+                        </Flex>
+                      </Box>
+                    </Flex>
+                  )}
+                </Box>
+              </ScrollArea>
+            </Flex>
+          ) : null}
           <Flex className="justify-center min-w-0" height="100vh">
             <Flex
               className="bg-black border-l border-r border-(--gold-10) shadow-[0_0_30px_var(--slate-10)] flex-1 min-w-0"
@@ -196,123 +330,138 @@ export default function Chat() {
               </Flex>
             </Flex>
           </Flex>
-          <Flex
-            className="bg-(--slate-1) border border-(--gold-10) shadow-[0_0_20px_var(--slate-9)] overflow-hidden"
-            direction="column"
-            height="100vh"
-          >
-            <Flex align="center" justify="between" className="border-b border-(--gold-9)" p="4">
-              <Text size="5" weight="bold">
-                {activePane === "player" && "Player character"}
-                {activePane === "party" && "Party"}
-                {activePane === "location" && "Location"}
-                {activePane === "inventory" && "Inventory"}
-                {activePane === "options" && "Options"}
-              </Text>
-              <Button variant="ghost" color="gold" onClick={() => setActivePane(null)}>
-                Close
-              </Button>
-            </Flex>
-            <ScrollArea className="flex-1 overflow-x-hidden" type="auto">
-              <Box p="4" className="break-words">
-                {activePane === "player" && <CharacterView character={protagonist} />}
+          {paneSide === "right" ? (
+            <Flex
+              className="bg-(--slate-1) border border-(--gold-10) shadow-[0_0_20px_var(--slate-9)] overflow-hidden"
+              direction="column"
+              height="100vh"
+            >
+              <Flex align="center" justify="between" className="border-b border-(--gold-9)" p="4">
+                <Text size="5" weight="bold">
+                  {activePane === "player" && "Player character"}
+                  {activePane === "party" && "Party"}
+                  {activePane === "location" && "Location"}
+                  {activePane === "inventory" && "Inventory"}
+                  {activePane === "options" && "Options"}
+                </Text>
+                <Button variant="ghost" color="gold" onClick={() => setActivePane(null)}>
+                  Close
+                </Button>
+              </Flex>
+              <ScrollArea className="flex-1 overflow-x-hidden" type="auto">
+                <Box p="4" className="break-words">
+                  {activePane === "player" && <CharacterView character={protagonist} />}
 
-                {activePane === "party" && (
-                  <Flex direction="column" gap="4">
-                    {partyMembers.length === 0 && <Text color="gray">No party members yet.</Text>}
-                    {partyMembers.map((member) => (
-                      <CharacterView key={`${member.name}-${member.locationIndex}`} character={member} />
-                    ))}
-                  </Flex>
-                )}
+                  {activePane === "party" && (
+                    <Flex direction="column" gap="4">
+                      {partyMembers.length === 0 && <Text color="gray">No party members yet.</Text>}
+                      {partyMembers.map((member) => (
+                        <CharacterView key={`${member.name}-${member.locationIndex}`} character={member} />
+                      ))}
+                    </Flex>
+                  )}
 
-                {activePane === "location" && (
-                  <Flex direction="column" gap="3">
-                    {currentLocation ? (
-                      <>
-                        <Text size="5" weight="bold">
-                          {currentLocation.name}
-                        </Text>
-                        <Text size="2" color="gray">
-                          {currentLocation.type}
-                        </Text>
-                        <Text>{currentLocation.description}</Text>
-                      </>
-                    ) : (
-                      <Text color="gray">No location yet.</Text>
-                    )}
-                  </Flex>
-                )}
+                  {activePane === "location" && (
+                    <Flex direction="column" gap="3">
+                      {currentLocation ? (
+                        <>
+                          <Text size="5" weight="bold">
+                            {currentLocation.name}
+                          </Text>
+                          <Text size="2" color="gray">
+                            {currentLocation.type}
+                          </Text>
+                          <Text>{currentLocation.description}</Text>
+                        </>
+                      ) : (
+                        <Text color="gray">No location yet.</Text>
+                      )}
+                    </Flex>
+                  )}
 
-                {activePane === "inventory" && (
-                  <Flex direction="column" gap="3">
-                    {inventory.length === 0 && <Text color="gray">Inventory is empty.</Text>}
-                    {inventory.map((item) => (
-                      <Box key={item.name} className="border border-(--slate-6) rounded-[12px]" p="3">
-                        <Text weight="bold">{item.name}</Text>
+                  {activePane === "inventory" && (
+                    <Flex direction="column" gap="3">
+                      {inventory.length === 0 && <Text color="gray">Inventory is empty.</Text>}
+                      {inventory.map((item) => (
+                        <Box key={item.name} className="border border-(--slate-6) rounded-[12px]" p="3">
+                          <Text weight="bold">{item.name}</Text>
+                          <Text as="div" size="2" color="gray">
+                            {item.description}
+                          </Text>
+                        </Box>
+                      ))}
+                    </Flex>
+                  )}
+
+                  {activePane === "options" && (
+                    <Flex direction="column" gap="3">
+                      <Box className="border border-(--slate-6) rounded-[12px]" p="3">
+                        <Text weight="bold">Genre</Text>
                         <Text as="div" size="2" color="gray">
-                          {item.description}
+                          {genre}
                         </Text>
                       </Box>
-                    ))}
-                  </Flex>
-                )}
-
-                {activePane === "options" && (
-                  <Flex direction="column" gap="3">
-                    <Box className="border border-(--slate-6) rounded-[12px]" p="3">
-                      <Text weight="bold">Genre</Text>
-                      <Text as="div" size="2" color="gray">
-                        {genre}
-                      </Text>
-                    </Box>
-                    <Box className="border border-(--slate-6) rounded-[12px]" p="3">
-                      <Text weight="bold" mb="2" as="div">
-                        Content
-                      </Text>
-                      <SegmentedControl.Root
-                        value={settingsSection}
-                        onValueChange={(value) => setSettingsSection(value as "sexual" | "violence")}
-                      >
-                        <SegmentedControl.Item value="sexual">Sexual</SegmentedControl.Item>
-                        <SegmentedControl.Item value="violence">Violence</SegmentedControl.Item>
-                      </SegmentedControl.Root>
-                      <Text as="div" size="2" color="gray" mt="2">
-                        {settingsSection === "sexual"
-                          ? `Level: ${sexualContentLevel}`
-                          : `Level: ${violentContentLevel}`}
-                      </Text>
-                    </Box>
-                    <Box className="border border-(--slate-6) rounded-[12px]" p="3">
-                      <Text weight="bold" mb="2" as="div">
-                        Session
-                      </Text>
-                      <Flex direction="column" gap="2">
-                        <Button variant="soft" color="gold" onClick={newCharacter}>
-                          New character (keeps connection settings)
-                        </Button>
-                        <Button variant="soft" color="gold" onClick={newScenario}>
-                          New scenario (keeps connection settings)
-                        </Button>
-                        <Button variant="soft" color="red" onClick={reset}>
-                          Reset state (wipes all progress)
-                        </Button>
-                        <Button
-                          variant="soft"
-                          color="gray"
-                          onClick={() =>
-                            window.open("https://github.com/p-e-w/waidrin/issues", "_blank", "noopener,noreferrer")
-                          }
+                      <Box className="border border-(--slate-6) rounded-[12px]" p="3">
+                        <Text weight="bold" mb="2" as="div">
+                          Content
+                        </Text>
+                        <SegmentedControl.Root
+                          value={settingsSection}
+                          onValueChange={(value) => setSettingsSection(value as "sexual" | "violence")}
                         >
-                          Report an issue...
-                        </Button>
-                      </Flex>
-                    </Box>
-                  </Flex>
-                )}
-              </Box>
-            </ScrollArea>
-          </Flex>
+                          <SegmentedControl.Item value="sexual">Sexual</SegmentedControl.Item>
+                          <SegmentedControl.Item value="violence">Violence</SegmentedControl.Item>
+                        </SegmentedControl.Root>
+                        <Text as="div" size="2" color="gray" mt="2">
+                          {settingsSection === "sexual"
+                            ? `Level: ${sexualContentLevel}`
+                            : `Level: ${violentContentLevel}`}
+                        </Text>
+                      </Box>
+                      <Box className="border border-(--slate-6) rounded-[12px]" p="3">
+                        <Text weight="bold" mb="2" as="div">
+                          Pane position
+                        </Text>
+                        <SegmentedControl.Root
+                          value={paneSide}
+                          onValueChange={(value) => setPaneSide(value as "right" | "left")}
+                        >
+                          <SegmentedControl.Item value="left">Left</SegmentedControl.Item>
+                          <SegmentedControl.Item value="right">Right</SegmentedControl.Item>
+                        </SegmentedControl.Root>
+                      </Box>
+                      <Box className="border border-(--slate-6) rounded-[12px]" p="3">
+                        <Text weight="bold" mb="2" as="div">
+                          Session
+                        </Text>
+                        <Flex direction="column" gap="2">
+                          <Button variant="soft" color="gold" onClick={newCharacter}>
+                            New character (keeps connection settings)
+                          </Button>
+                          <Button variant="soft" color="gold" onClick={newScenario}>
+                            New scenario (keeps connection settings)
+                          </Button>
+                          <Button variant="soft" color="red" onClick={reset}>
+                            Reset state (wipes all progress)
+                          </Button>
+                          <Button
+                            variant="soft"
+                            color="gray"
+                            onClick={() =>
+                              window.open("https://github.com/p-e-w/waidrin/issues", "_blank", "noopener,noreferrer")
+                            }
+                          >
+                            Report an issue...
+                          </Button>
+                        </Flex>
+                      </Box>
+                    </Flex>
+                  )}
+                </Box>
+              </ScrollArea>
+            </Flex>
+          ) : null}
+          {paneSide === "right" ? null : <Box />}
         </Box>
       ) : (
         <Flex className="w-full justify-center">
