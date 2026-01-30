@@ -12,7 +12,16 @@ import { getProtagonistPromptText, getSystemPrompt } from "@/lib/prompts";
 import { type Gender, type Race, useStateStore } from "@/lib/state";
 
 export default function CharacterSelect({ onNext, onBack }: { onNext?: () => void; onBack?: () => void }) {
-  const { gender, race, protagonistGuidance, systemPromptOverride, protagonistPromptOverride, setState, fullState } =
+  const {
+    gender,
+    race,
+    protagonistGuidance,
+    systemPromptOverride,
+    protagonistPromptOverride,
+    genre,
+    setState,
+    fullState,
+  } =
     useStateStore(
       useShallow((state) => ({
         gender: state.protagonist.gender,
@@ -20,6 +29,7 @@ export default function CharacterSelect({ onNext, onBack }: { onNext?: () => voi
         protagonistGuidance: state.protagonistGuidance,
         systemPromptOverride: state.systemPromptOverride,
         protagonistPromptOverride: state.protagonistPromptOverride,
+        genre: state.genre,
         setState: state.set,
         fullState: state,
       })),
@@ -38,8 +48,18 @@ export default function CharacterSelect({ onNext, onBack }: { onNext?: () => voi
     setReviewOpen(true);
   };
 
+  const handleNext = onNext
+    ? () => {
+        if (genre === "custom") {
+          onNext();
+          return;
+        }
+        openReview();
+      }
+    : undefined;
+
   return (
-    <WizardStep title="Character" onNext={onNext ? openReview : undefined} onBack={onBack}>
+    <WizardStep title="Character" onNext={handleNext} onBack={onBack}>
       <SegmentedControl.Root
         value={gender}
         onValueChange={(value: Gender) =>
@@ -93,7 +113,7 @@ export default function CharacterSelect({ onNext, onBack }: { onNext?: () => voi
         </Label.Root>
       </Box>
 
-      {onNext && (
+      {onNext && genre !== "custom" && (
         <Dialog.Root open={reviewOpen} onOpenChange={setReviewOpen}>
           <Dialog.Content maxWidth="50rem">
             <Dialog.Title className="lowercase" size="7">

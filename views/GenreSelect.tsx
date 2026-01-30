@@ -119,8 +119,18 @@ export default function GenreSelect({ onNext, onBack }: { onNext?: () => void; o
     { key: "summarizePrompt", label: "Summarize prompt" },
   ];
 
+  const handleNext = onNext
+    ? () => {
+        if (genre === "custom") {
+          onNext();
+          return;
+        }
+        openReview();
+      }
+    : undefined;
+
   return (
-    <WizardStep title="Genre" onNext={onNext ? openReview : undefined} onBack={onBack}>
+    <WizardStep title="Genre" onNext={handleNext} onBack={onBack}>
       <RadioCards.Root
         value={genre}
         onValueChange={(value) =>
@@ -248,7 +258,7 @@ export default function GenreSelect({ onNext, onBack }: { onNext?: () => void; o
         </Box>
       )}
 
-      {onNext && (
+      {onNext && genre !== "custom" && (
         <Dialog.Root open={reviewOpen} onOpenChange={setReviewOpen}>
           <Dialog.Content maxWidth="50rem">
             <Dialog.Title className="lowercase" size="7">
