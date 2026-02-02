@@ -78,6 +78,24 @@ to run in development mode, which gives you features like hot reload and
 React Strict Mode, and is probably what you want if you plan to work on
 Waidrin's code (which you are very welcome to do!).
 
+## Telegram bot
+
+Waidrin also includes a Telegram bot webhook that mirrors the web experience.
+To enable it:
+
+1. Create a bot with BotFather and set the `TELEGRAM_BOT_TOKEN` environment variable.
+2. Expose your Next.js server and set the webhook:
+
+```
+curl -X POST "https://api.telegram.org/bot$TELEGRAM_BOT_TOKEN/setWebhook" \
+  -d "url=https://<your-domain>/api/telegram"
+```
+
+3. Start the Next.js server and send `/start` to the bot.
+
+The bot stores sessions in memory. For production usage, wire the session store
+to a persistent database or cache.
+
 
 ## License
 
